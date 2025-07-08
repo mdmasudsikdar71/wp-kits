@@ -1,0 +1,31 @@
+{
+  "name": "mdmasudsikdar71/wp-kits",
+  "description": "A collection of reusable helpers, traits, classes to speed up plugin development.",
+  "type": "library",
+  "license": "GPL-2.0-or-later",
+  "keywords": [
+    "wordpress",
+    "helpers",
+    "traits",
+    "classes",
+    "utilities",
+    "plugin-development"
+  ],
+  "authors": [
+    {
+      "name": "MD Masud Sikdar",
+      "email": "masudsikdar85@gmail.com",
+      "homepage": "https://masudsikdar.com",
+      "role": "Programmer"
+    }
+  ],
+  "require": {
+    "php": ">=8.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "MDMasudSikdar\\WpKits\\": "src/"
+    }
+  },
+  "minimum-stability": "dev"
+}
