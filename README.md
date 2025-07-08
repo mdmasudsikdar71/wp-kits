@@ -24,7 +24,3 @@ Autoloading is handled by Composer PSR-4. Use the namespace:
 ```php
 use MDMasudSikdar\WpKits\SomeClassOrTrait;
 ```
-
-## License
-
-GPL-2.0-or-later
