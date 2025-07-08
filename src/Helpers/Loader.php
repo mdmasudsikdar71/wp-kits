@@ -43,7 +43,6 @@ class Loader
    *
    * @param ServiceProviderInterface $provider The service provider instance.
    * @return void
-   * @since 1.0.0
    */
   public function register(ServiceProviderInterface $provider): void
   {
@@ -58,7 +57,6 @@ class Loader
    * like loading routes, services, or deferred hooks.
    *
    * @return void
-   * @since 1.0.0
    */
   public function boot(): void
   {

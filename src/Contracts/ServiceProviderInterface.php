@@ -28,7 +28,6 @@ namespace MDMasudSikdar\WpKits\Contracts;
  * }
  * ```
  *
- * @since 1.0.0
  * @package MDMasudSikdar\WpKits\Contracts
  */
 interface ServiceProviderInterface
