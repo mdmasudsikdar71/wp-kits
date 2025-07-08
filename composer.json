@@ -2,6 +2,7 @@
   "name": "mdmasudsikdar71/wp-kits",
   "description": "A collection of reusable helpers, traits, classes to speed up plugin development.",
   "type": "library",
+  "license": "MIT",
   "keywords": [
     "wordpress",
     "helpers",
