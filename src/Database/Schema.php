@@ -100,8 +100,7 @@ class Schema
      */
     public function increments(string $name = 'id'): self
     {
-        $this->columns[] = "`$name` INT UNSIGNED NOT NULL AUTO_INCREMENT";
-        $this->primaryKeys[] = $name;
+        $this->columns[] = "`$name` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY";
         return $this;
     }
 
