@@ -49,18 +49,16 @@ class RestApi
         ?callable $permission_callback = null,
         array $args = []
     ): void {
-        add_action('rest_api_init', function () use ($route, $method, $callback, $permission_callback, $args) {
-            register_rest_route(
-                self::normalize_namespace($route),
-                self::normalize_endpoint($route),
-                [
-                    'methods'             => strtoupper($method),
-                    'callback'            => $callback,
-                    'permission_callback' => $permission_callback ?? '__return_true',
-                    'args'                => $args,
-                ]
-            );
-        });
+        register_rest_route(
+            self::normalize_namespace($route),
+            self::normalize_endpoint($route),
+            [
+                'methods'             => strtoupper($method),
+                'callback'            => $callback,
+                'permission_callback' => $permission_callback ?? '__return_true',
+                'args'                => $args,
+            ]
+        );
     }
 
     /**
