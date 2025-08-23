@@ -208,28 +208,25 @@ class RestApi
         static $enabled = false;
 
         if ($enabled) {
-            // Already enabled, do nothing
-            return;
+            return; // already enabled
         }
 
         $enabled = true;
 
         add_action('parse_request', function ($wp) {
-            // Only apply when permalinks are plain
             if (get_option('permalink_structure') === '') {
                 $uri = $_SERVER['REQUEST_URI'] ?? '';
 
-                // Match /wp-json/... requests
                 if (preg_match('#/wp-json(/.*)?$#', $uri, $matches)) {
                     $rest_route = !empty($matches[1]) ? $matches[1] : '/';
-
-                    // Emulate the rest_route query var
                     $_GET['rest_route']           = $rest_route;
                     $wp->query_vars['rest_route'] = $rest_route;
 
-                    // Manually boot WordPress REST API dispatcher
-                    require_once ABSPATH . 'wp-includes/rest-api.php';
-                    rest_api_loaded();
+                    // Only load REST API if not loaded yet
+                    if (!defined('REST_REQUEST')) {
+                        require_once ABSPATH . 'wp-includes/rest-api.php';
+                        rest_api_loaded();
+                    }
 
                     exit;
                 }
