@@ -153,4 +153,42 @@ class RestApi
         $parts = explode('/', trim($route, '/'));
         return '/' . implode('/', array_slice($parts, 2));
     }
+
+    /**
+     * Enable plain permalink fallback for REST API routes.
+     *
+     * When WordPress permalinks are set to "Plain", `/wp-json/...` normally fails,
+     * and only the `?rest_route=/...` format works.
+     *
+     * This method fixes that by intercepting `/wp-json/...` requests in `parse_request`,
+     * mapping them to the `rest_route` query var, and manually loading the REST API.
+     *
+     * Usage: Call inside your plugin bootstrap (e.g. in a service provider).
+     *
+     * @return void
+     */
+    public static function enablePlainPermalinkFallback(): void
+    {
+        add_action('parse_request', function ($wp) {
+            // Only apply when permalinks are plain
+            if (get_option('permalink_structure') === '') {
+                $uri = $_SERVER['REQUEST_URI'] ?? '';
+
+                // Match /wp-json/... requests
+                if (preg_match('#/wp-json(/.*)?$#', $uri, $matches)) {
+                    $rest_route = !empty($matches[1]) ? $matches[1] : '/';
+
+                    // Emulate the rest_route query var
+                    $_GET['rest_route']           = $rest_route;
+                    $wp->query_vars['rest_route'] = $rest_route;
+
+                    // Manually boot WordPress REST API dispatcher
+                    require_once ABSPATH . 'wp-includes/rest-api.php';
+                    rest_api_loaded();
+
+                    exit;
+                }
+            }
+        });
+    }
 }
