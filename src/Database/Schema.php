@@ -202,21 +202,15 @@ class Schema
      */
     public function build(): void
     {
-        if (empty($this->columns)) {
-            return;
-        }
-
-        $primary = '';
-        if (!empty($this->primaryKeys)) {
-            $primary = ", PRIMARY KEY (" . implode(',', array_map(fn($k) => "`$k`", $this->primaryKeys)) . ")";
-        }
+        if (empty($this->columns)) return;
 
         $sql = "CREATE TABLE {$this->table} (\n";
         $sql .= implode(",\n", $this->columns);
-        $sql .= $primary;
+
         if (!empty($this->indexes)) {
             $sql .= ",\n" . implode(",\n", $this->indexes);
         }
+
         $sql .= "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
