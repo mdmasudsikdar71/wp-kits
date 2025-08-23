@@ -404,4 +404,621 @@ abstract class Model
 
         return $related->find($foreignValue);
     }
+
+    /**
+     * Get a single column from all results.
+     *
+     * @param string $column
+     * @return array<int, mixed>
+     *
+     * @example
+     * ```php
+     * $names = User::query()->pluck('name');
+     * ```
+     */
+    public function pluck(string $column): array
+    {
+        $results = $this->get();
+        return array_map(fn($row) => $row[$column] ?? null, $results);
+    }
+
+    /**
+     * Count records matching current query.
+     *
+     * @return int
+     *
+     * @example
+     * ```php
+     * $count = User::query()->where('status', 'active')->count();
+     * ```
+     */
+    public function count(): int
+    {
+        $tableName = $this->db->prefix . $this->table;
+        $sql = "SELECT COUNT(*) as count FROM {$tableName} WHERE 1=1";
+        $params = [];
+
+        foreach ($this->wheres as [$col, $val]) {
+            $sql .= " AND {$col} = %s";
+            $params[] = $val;
+        }
+
+        if ($this->softDeletes) {
+            $sql .= " AND deleted_at IS NULL";
+        }
+
+        $preparedSql = $this->db->prepare($sql, ...$params);
+        $result = $this->db->get_row($preparedSql, ARRAY_A);
+        return (int)($result['count'] ?? 0);
+    }
+
+    /**
+     * Check if any record exists matching query.
+     *
+     * @return bool
+     *
+     * @example
+     * ```php
+     * $exists = User::query()->where('email', 'test@example.com')->exists();
+     * ```
+     */
+    public function exists(): bool
+    {
+        return $this->count() > 0;
+    }
+
+    /**
+     * Increment a numeric column by a value.
+     *
+     * @param string $column
+     * @param int|float $amount
+     * @param array<string, mixed> $wheres
+     * @return bool
+     *
+     * @example
+     * ```php
+     * User::query()->where('id', 1)->increment('login_count', 1);
+     * ```
+     */
+    public function increment(string $column, int|float $amount = 1, array $wheres = []): bool
+    {
+        return $this->modifyColumn($column, $amount, ' + ', $wheres);
+    }
+
+    /**
+     * Decrement a numeric column by a value.
+     *
+     * @param string $column
+     * @param int|float $amount
+     * @param array<string, mixed> $wheres
+     * @return bool
+     *
+     * @example
+     * ```php
+     * User::query()->where('id', 1)->decrement('credits', 5);
+     * ```
+     */
+    public function decrement(string $column, int|float $amount = 1, array $wheres = []): bool
+    {
+        return $this->modifyColumn($column, $amount, ' - ', $wheres);
+    }
+
+    /**
+     * Truncate the table.
+     *
+     * @return bool
+     *
+     * @example
+     * ```php
+     * User::query()->truncate();
+     * ```
+     */
+    public function truncate(): bool
+    {
+        $tableName = $this->db->prefix . $this->table;
+        $sql = "TRUNCATE TABLE {$tableName}";
+        return (bool)$this->db->query($sql);
+    }
+
+    /**
+     * Get first record matching attributes or create it.
+     *
+     * @param array<string, mixed> $attributes
+     * @param array<string, mixed> $values
+     * @return array<string, mixed>|int
+     *
+     * @example
+     * ```php
+     * $user = User::query()->firstOrCreate(
+     *     ['email' => 'test@example.com'],
+     *     ['name' => 'Test User']
+     * );
+     * ```
+     */
+    public function firstOrCreate(array $attributes, array $values = []): array|int
+    {
+        foreach ($attributes as $col => $val) {
+            $this->where($col, $val);
+        }
+
+        $record = $this->first();
+        if ($record) {
+            return $record;
+        }
+
+        return $this->create(array_merge($attributes, $values));
+    }
+
+    /**
+     * Update records matching query conditions.
+     *
+     * @param array<string, mixed> $data
+     * @return bool
+     *
+     * @example
+     * ```php
+     * User::query()->where('status', 'inactive')->updateWhere(['status' => 'active']);
+     * ```
+     */
+    public function updateWhere(array $data): bool
+    {
+        $tableName = $this->db->prefix . $this->table;
+
+        if ($this->timestamps) {
+            $data['updated_at'] = current_time('mysql');
+        }
+
+        $sql = "UPDATE {$tableName} SET ";
+        $setParts = [];
+        $params = [];
+
+        foreach ($data as $col => $val) {
+            $setParts[] = "{$col} = %s";
+            $params[] = $val;
+        }
+
+        $sql .= implode(', ', $setParts) . " WHERE 1=1";
+
+        foreach ($this->wheres as [$col, $val]) {
+            $sql .= " AND {$col} = %s";
+            $params[] = $val;
+        }
+
+        if ($this->softDeletes) {
+            $sql .= " AND deleted_at IS NULL";
+        }
+
+        $preparedSql = $this->db->prepare($sql, ...$params);
+        return (bool)$this->db->query($preparedSql);
+    }
+
+    /**
+     * Helper method to increment/decrement a numeric column.
+     *
+     * @internal
+     */
+    protected function modifyColumn(string $column, int|float $amount, string $operator, array $wheres = []): bool
+    {
+        $tableName = $this->db->prefix . $this->table;
+        $sql = "UPDATE {$tableName} SET {$column} = {$column}{$operator}%d WHERE 1=1";
+        $params = [$amount];
+
+        foreach (array_merge($this->wheres, $wheres) as [$col, $val]) {
+            $sql .= " AND {$col} = %s";
+            $params[] = $val;
+        }
+
+        if ($this->softDeletes) {
+            $sql .= " AND deleted_at IS NULL";
+        }
+
+        $preparedSql = $this->db->prepare($sql, ...$params);
+        return (bool)$this->db->query($preparedSql);
+    }
+
+    /**
+     * Add a WHERE IN clause.
+     *
+     * @param string $column
+     * @param array<int, mixed> $values
+     * @return static
+     *
+     * @example
+     * $users = User::query()->whereIn('role', ['admin', 'editor'])->get();
+     */
+    public function whereIn(string $column, array $values): static
+    {
+        if (empty($values)) return $this;
+        $placeholders = implode(',', array_fill(0, count($values), '%s'));
+        $this->wheres[] = [$column, $values, 'IN', $placeholders];
+        return $this;
+    }
+
+    /**
+     * Paginate results.
+     *
+     * @param int $perPage
+     * @param int $page
+     * @return array{data: array<int, array<string, mixed>>, total: int, per_page: int, current_page: int, last_page: int}
+     *
+     * @example
+     * $pageData = User::query()->where('status', 'active')->paginate(10, 2);
+     */
+    public function paginate(int $perPage = 10, int $page = 1): array
+    {
+        $this->limit($perPage)->offset(($page - 1) * $perPage);
+        $data = $this->get();
+        $total = $this->count();
+        $lastPage = (int)ceil($total / $perPage);
+
+        return [
+            'data' => $data,
+            'total' => $total,
+            'per_page' => $perPage,
+            'current_page' => $page,
+            'last_page' => $lastPage,
+        ];
+    }
+
+    /**
+     * Insert multiple records.
+     *
+     * @param array<int, array<string, mixed>> $records
+     * @return bool
+     *
+     * @example
+     * User::query()->bulkInsert([
+     *     ['name' => 'John', 'email' => 'john@example.com'],
+     *     ['name' => 'Jane', 'email' => 'jane@example.com'],
+     * ]);
+     */
+    public function bulkInsert(array $records): bool
+    {
+        if (empty($records)) return false;
+
+        $tableName = $this->db->prefix . $this->table;
+        $columns = array_keys($records[0]);
+        $placeholders = '(' . implode(',', array_fill(0, count($columns), '%s')) . ')';
+        $allPlaceholders = implode(',', array_fill(0, count($records), $placeholders));
+        $values = [];
+        foreach ($records as $row) {
+            foreach ($columns as $col) {
+                $values[] = $row[$col] ?? null;
+            }
+        }
+
+        $sql = "INSERT INTO {$tableName} (" . implode(',', $columns) . ") VALUES {$allPlaceholders}";
+        $preparedSql = $this->db->prepare($sql, ...$values);
+
+        return (bool)$this->db->query($preparedSql);
+    }
+
+    /**
+     * Add a WHERE NOT IN clause.
+     *
+     * @param string $column
+     * @param array<int, mixed> $values
+     * @return static
+     *
+     * @example
+     * $users = User::query()->whereNotIn('status', ['inactive'])->get();
+     */
+    public function whereNotIn(string $column, array $values): static
+    {
+        if (empty($values)) return $this;
+
+        $placeholders = implode(',', array_fill(0, count($values), '%s'));
+        $this->wheres[] = [$column, $values, 'NOT IN', $placeholders];
+        return $this;
+    }
+
+    /**
+     * Order by column descending.
+     *
+     * @param string $column
+     * @return static
+     *
+     * @example
+     * $latestUsers = User::query()->latest('created_at')->get();
+     */
+    public function latest(string $column = 'created_at'): static
+    {
+        return $this->orderBy($column, 'DESC');
+    }
+
+    /**
+     * Order by column ascending.
+     *
+     * @param string $column
+     * @return static
+     *
+     * @example
+     * $oldestUsers = User::query()->oldest('created_at')->get();
+     */
+    public function oldest(string $column = 'created_at'): static
+    {
+        return $this->orderBy($column, 'ASC');
+    }
+
+    /**
+     * Execute a raw SQL query.
+     *
+     * @param string $sql
+     * @param array<int, mixed> $params
+     * @param bool $singleRow
+     * @return array<int, array<string, mixed>>|array<string, mixed>|null
+     *
+     * @example
+     * $results = User::query()->raw("SELECT * FROM {$wpdb->prefix}users WHERE status=%s", ['active']);
+     * $row = User::query()->raw("SELECT * FROM {$wpdb->prefix}users WHERE id=%d", [1], true);
+     */
+    public function raw(string $sql, array $params = [], bool $singleRow = false)
+    {
+        $preparedSql = empty($params) ? $sql : $this->db->prepare($sql, ...$params);
+        return $singleRow ? $this->db->get_row($preparedSql, ARRAY_A) : $this->db->get_results($preparedSql, ARRAY_A);
+    }
+
+    /**
+     * Update a record matching attributes or create a new one.
+     *
+     * @param array<string, mixed> $attributes
+     * @param array<string, mixed> $values
+     * @return array<string, mixed>|int
+     *
+     * @example
+     * $user = User::query()->updateOrCreate(
+     *     ['email' => 'john@example.com'],
+     *     ['name' => 'John Doe', 'status' => 'active']
+     * );
+     */
+    public function updateOrCreate(array $attributes, array $values = []): array|int
+    {
+        foreach ($attributes as $col => $val) {
+            $this->where($col, $val);
+        }
+
+        $record = $this->first();
+        if ($record) {
+            $this->update((int)$record[$this->primaryKey], $values);
+            return array_merge($record, $values);
+        }
+
+        return $this->create(array_merge($attributes, $values));
+    }
+
+    /**
+     * Get the first record matching query or throw exception if not found.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws \Exception
+     * @example
+     * $user = User::query()->where('email', 'john@example.com')->firstOrFail();
+     */
+    public function firstOrFail(): array
+    {
+        $record = $this->first();
+        if (!$record) {
+            throw new \Exception("Record not found in {$this->table}.");
+        }
+        return $record;
+    }
+
+    /**
+     * Get a random record or multiple records.
+     *
+     * @param int $count
+     * @return array<int, array<string, mixed>>
+     *
+     * @example
+     * $randomUsers = User::query()->inRandomOrder()->limit(3)->get();
+     */
+    public function inRandomOrder(int $count = 1): array
+    {
+        $this->orderBy('RAND()');
+        if ($count > 1) {
+            $this->limit($count);
+        }
+        return $this->get();
+    }
+
+    /**
+     * Apply a raw WHERE clause.
+     *
+     * @param string $raw
+     * @param array<int, mixed> $bindings
+     * @return static
+     *
+     * @example
+     * $users = User::query()->whereRaw("LENGTH(name) > %d", [5])->get();
+     */
+    public function whereRaw(string $raw, array $bindings = []): static
+    {
+        $this->wheres[] = ['RAW', $raw, $bindings];
+        return $this;
+    }
+
+    /**
+     * Delete multiple records matching query conditions (hard or soft delete).
+     *
+     * @return bool
+     *
+     * @example
+     * User::query()->where('status', 'inactive')->deleteWhere();
+     */
+    public function deleteWhere(): bool
+    {
+        $records = $this->get();
+        $success = true;
+
+        foreach ($records as $record) {
+            $result = $this->delete((int)$record[$this->primaryKey]);
+            if (!$result) $success = false;
+        }
+
+        return $success;
+    }
+
+    /**
+     * Update a single column for all records matching query.
+     *
+     * @param string $column
+     * @param mixed $value
+     * @return bool
+     *
+     * @example
+     * User::query()->where('status', 'inactive')->updateColumn('status', 'active');
+     */
+    public function updateColumn(string $column, mixed $value): bool
+    {
+        return $this->updateWhere([$column => $value]);
+    }
+
+    /**
+     * Get the maximum value of a column.
+     *
+     * @param string $column
+     * @return int|float|null
+     *
+     * @example
+     * $maxAge = User::query()->max('age');
+     */
+    public function max(string $column): int|float|null
+    {
+        $tableName = $this->db->prefix . $this->table;
+        $sql = "SELECT MAX({$column}) AS max_value FROM {$tableName} WHERE 1=1";
+        $params = [];
+
+        foreach ($this->wheres as [$col, $val]) {
+            $sql .= " AND {$col} = %s";
+            $params[] = $val;
+        }
+
+        if ($this->softDeletes) {
+            $sql .= " AND deleted_at IS NULL";
+        }
+
+        $preparedSql = $this->db->prepare($sql, ...$params);
+        $result = $this->db->get_row($preparedSql, ARRAY_A);
+        return $result['max_value'] ?? null;
+    }
+
+    /**
+     * Get the minimum value of a column.
+     *
+     * @param string $column
+     * @return int|float|null
+     *
+     * @example
+     * $minAge = User::query()->min('age');
+     */
+    public function min(string $column): int|float|null
+    {
+        $tableName = $this->db->prefix . $this->table;
+        $sql = "SELECT MIN({$column}) AS min_value FROM {$tableName} WHERE 1=1";
+        $params = [];
+
+        foreach ($this->wheres as [$col, $val]) {
+            $sql .= " AND {$col} = %s";
+            $params[] = $val;
+        }
+
+        if ($this->softDeletes) {
+            $sql .= " AND deleted_at IS NULL";
+        }
+
+        $preparedSql = $this->db->prepare($sql, ...$params);
+        $result = $this->db->get_row($preparedSql, ARRAY_A);
+        return $result['min_value'] ?? null;
+    }
+
+    /**
+     * Get the sum of a column.
+     *
+     * @param string $column
+     * @return int|float
+     *
+     * @example
+     * $totalCredits = User::query()->sum('credits');
+     */
+    public function sum(string $column): int|float
+    {
+        $tableName = $this->db->prefix . $this->table;
+        $sql = "SELECT SUM({$column}) AS total FROM {$tableName} WHERE 1=1";
+        $params = [];
+
+        foreach ($this->wheres as [$col, $val]) {
+            $sql .= " AND {$col} = %s";
+            $params[] = $val;
+        }
+
+        if ($this->softDeletes) {
+            $sql .= " AND deleted_at IS NULL";
+        }
+
+        $preparedSql = $this->db->prepare($sql, ...$params);
+        $result = $this->db->get_row($preparedSql, ARRAY_A);
+        return (float)($result['total'] ?? 0);
+    }
+
+    /**
+     * Group results by a column and optionally aggregate.
+     *
+     * @param string $column
+     * @param string|null $aggregateColumn
+     * @param string $aggregateFunction COUNT|SUM|AVG|MAX|MIN
+     * @return array<int, array<string, mixed>>
+     *
+     * @example
+     * $grouped = User::query()->groupBy('role', 'id', 'COUNT');
+     */
+    public function groupBy(string $column, ?string $aggregateColumn = null, string $aggregateFunction = 'COUNT'): array
+    {
+        $tableName = $this->db->prefix . $this->table;
+        $select = $aggregateColumn ? "{$aggregateFunction}({$aggregateColumn}) AS aggregate, {$column}" : "*";
+        $sql = "SELECT {$select} FROM {$tableName} WHERE 1=1";
+        $params = [];
+
+        foreach ($this->wheres as [$col, $val]) {
+            $sql .= " AND {$col} = %s";
+            $params[] = $val;
+        }
+
+        if ($this->softDeletes) {
+            $sql .= " AND deleted_at IS NULL";
+        }
+
+        $sql .= " GROUP BY {$column}";
+        $preparedSql = $this->db->prepare($sql, ...$params);
+        return $this->db->get_results($preparedSql, ARRAY_A);
+    }
+
+    /**
+     * Get average value of a column.
+     *
+     * @param string $column
+     * @return float
+     *
+     * @example
+     * $avgAge = User::query()->avg('age');
+     */
+    public function avg(string $column): float
+    {
+        $tableName = $this->db->prefix . $this->table;
+        $sql = "SELECT AVG({$column}) AS average FROM {$tableName} WHERE 1=1";
+        $params = [];
+
+        foreach ($this->wheres as [$col, $val]) {
+            $sql .= " AND {$col} = %s";
+            $params[] = $val;
+        }
+
+        if ($this->softDeletes) {
+            $sql .= " AND deleted_at IS NULL";
+        }
+
+        $preparedSql = $this->db->prepare($sql, ...$params);
+        $result = $this->db->get_row($preparedSql, ARRAY_A);
+        return (float)($result['average'] ?? 0);
+    }
 }
