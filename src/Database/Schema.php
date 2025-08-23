@@ -195,6 +195,96 @@ class Schema
     }
 
     /**
+     * Alter an existing table.
+     *
+     * Usage:
+     * ```php
+     * Schema::alter('my_table', function($table) {
+     *    $table->addColumn('new_col', 'VARCHAR(100) NOT NULL DEFAULT ""');
+     *    $table->dropColumn('old_col');
+     *    $table->addIndex('new_col');
+     * });
+     * ```
+     *
+     * @param string $table Table name without prefix
+     * @param callable $callback
+     * @return void
+     */
+    public static function alter(string $table, callable $callback): void
+    {
+        $schema = new static($table);
+        $callback($schema);
+        $schema->runAlter();
+    }
+
+    /**
+     * Add a raw column definition for ALTER TABLE
+     *
+     * Example: $table->addColumn('status', 'TINYINT(1) NOT NULL DEFAULT 0');
+     *
+     * @param string $name
+     * @param string $definition
+     * @return $this
+     */
+    public function addColumn(string $name, string $definition): self
+    {
+        $this->columns[] = "`$name` $definition";
+        return $this;
+    }
+
+    /**
+     * Drop a column in ALTER TABLE
+     *
+     * @param string $name
+     * @return $this
+     */
+    public function dropColumn(string $name): self
+    {
+        $this->columns[] = "DROP COLUMN `$name`";
+        return $this;
+    }
+
+    /**
+     * Add an index in ALTER TABLE
+     *
+     * @param string $column
+     * @param string|null $indexName
+     * @return $this
+     */
+    public function addIndex(string $column, ?string $indexName = null): self
+    {
+        $indexName = $indexName ?: $this->table . "_{$column}_index";
+        $this->indexes[] = "ADD KEY `$indexName` (`$column`)";
+        return $this;
+    }
+
+    /**
+     * Drop an index in ALTER TABLE
+     *
+     * @param string $indexName
+     * @return $this
+     */
+    public function dropIndex(string $indexName): self
+    {
+        $this->indexes[] = "DROP INDEX `$indexName`";
+        return $this;
+    }
+
+    /**
+     * Execute ALTER TABLE with all queued columns/indexes
+     *
+     * @return void
+     */
+    protected function runAlter(): void
+    {
+        $alterParts = array_merge($this->columns, $this->indexes);
+        if (empty($alterParts)) return;
+
+        $sql = "ALTER TABLE {$this->table} " . implode(", ", $alterParts) . ";";
+        $this->wpdb->query($sql);
+    }
+
+    /**
      * Compile and run the SQL using dbDelta.
      *
      * @return void
