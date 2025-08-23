@@ -70,7 +70,7 @@ class RestApi
 
         // Wrap the permission callback to include nonce verification automatically
         $permission_callback = function (\WP_REST_Request $request) use ($permission_callback) {
-            if (!!self::verifyNonce($request)) {
+            if (!!self::verifyNonce($request->get_header('X-WP-Nonce'), $request->get_header('X-Plugin-Nonce'))) {
                 return self::response(Language::__('Invalid or missing nonce'), false, 403);
             }
 
@@ -146,8 +146,7 @@ class RestApi
             'success' => $success,
             'payload'    => $payload,
             'headers' => $headers,
-            'status'  => $status,
-            'nonce'   => wp_create_nonce('rest_nonce_' . md5(self::normalizeRoute($_SERVER['REQUEST_URI'])))
+            'status'  => $status
         ];
 
         $response = new \WP_REST_Response($response_data, $status);
@@ -227,29 +226,30 @@ class RestApi
     }
 
     /**
-     * Verify the nonce automatically using current request route.
+     * Verify a WordPress nonce for a given key.
      *
-     * @param \WP_REST_Request $request
+     * Checks if the provided nonce is valid for the specified key/action.
+     * Returns true if the nonce is valid and has not expired, false otherwise.
      *
-     * @return bool
+     * @param string $nonce The nonce string to verify.
+     * @param string $key. The action/key to verify against.
+     * @return bool True if nonce is valid, false otherwise.
      */
-    protected static function verifyNonce(\WP_REST_Request $request): bool
-    {
-        $nonce = $request->get_header('X-WP-Nonce') ?: '';
-
-        return wp_verify_nonce($nonce, 'rest_nonce_' . md5(self::normalizeRoute($_SERVER['REQUEST_URI'])));
+    private static function verifyNonce(string $nonce, string $key): bool {
+        return wp_verify_nonce($nonce, $key);
     }
 
     /**
-     * Normalize URI to route string for nonce generation.
+     * Generate a WordPress nonce for a given key.
      *
-     * @param string $uri
-     * @return string
+     * Nonces are used to verify the intention of requests and prevent CSRF attacks.
+     * By default, the key 'wpbp_rest_nonce' is used, but you can pass a custom key
+     * for different plugins or contexts.
+     *
+     * @param string $key. The action/key for which to generate the nonce.
+     * @return string The generated WordPress nonce string.
      */
-    private static function normalizeRoute(string $uri): string
-    {
-        // Remove query string and trailing slashes
-        $path = parse_url($uri, PHP_URL_PATH);
-        return trim($path, '/');
+    private static function generateNonce(string $key): string {
+        return wp_create_nonce($key);
     }
 }
