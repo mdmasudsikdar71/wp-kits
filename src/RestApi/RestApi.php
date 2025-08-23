@@ -2,6 +2,7 @@
 
 namespace MDMasudSikdar\WpKits\RestApi;
 
+use MDMasudSikdar\WpKits\Helpers\Language;
 use ReflectionMethod;
 
 /**
@@ -67,6 +68,20 @@ class RestApi
         // Extract class and method from array
         [$class, $action] = $controller;
 
+        // Wrap the permission callback to include nonce verification automatically
+        $permission_callback = function (\WP_REST_Request $request) use ($permission_callback) {
+            if (!!self::verifyNonce($request)) {
+                return self::response(Language::__('Invalid or missing nonce'), false, 403);
+            }
+
+            // If an original permission callback exists, call it
+            if ($permission_callback && is_callable($permission_callback)) {
+                return (bool) call_user_func($permission_callback, $request);
+            }
+
+            return true;
+        };
+
         // Delegate to the register method
         self::register(
             $route,
@@ -131,7 +146,8 @@ class RestApi
             'success' => $success,
             'payload'    => $payload,
             'headers' => $headers,
-            'status'  => $status
+            'status'  => $status,
+            'nonce'   => wp_create_nonce('rest_nonce_' . md5(self::normalizeRoute($_SERVER['REQUEST_URI'])))
         ];
 
         $response = new \WP_REST_Response($response_data, $status);
@@ -208,5 +224,32 @@ class RestApi
                 }
             }
         });
+    }
+
+    /**
+     * Verify the nonce automatically using current request route.
+     *
+     * @param \WP_REST_Request $request
+     *
+     * @return bool
+     */
+    protected static function verifyNonce(\WP_REST_Request $request): bool
+    {
+        $nonce = $request->get_header('X-WP-Nonce') ?: '';
+
+        return wp_verify_nonce($nonce, 'rest_nonce_' . md5(self::normalizeRoute($_SERVER['REQUEST_URI'])));
+    }
+
+    /**
+     * Normalize URI to route string for nonce generation.
+     *
+     * @param string $uri
+     * @return string
+     */
+    private static function normalizeRoute(string $uri): string
+    {
+        // Remove query string and trailing slashes
+        $path = parse_url($uri, PHP_URL_PATH);
+        return trim($path, '/');
     }
 }
