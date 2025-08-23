@@ -285,6 +285,43 @@ class Schema
     }
 
     /**
+     * Create a table if it does not already exist.
+     *
+     * This method first checks whether the table with the WordPress prefix
+     * already exists in the database. If it does, the callback is skipped
+     * and no SQL is executed. If the table does not exist, it calls
+     * `Schema::create()` to build the table using the provided callback.
+     *
+     * Usage:
+     * ```php
+     * Schema::createIfNotExists('plugin_migrations', function($table) {
+     *     $table->increments('id');
+     *     $table->string('migration', 191);
+     *     $table->integer('batch');
+     *     $table->dateTime('created_at');
+     * });
+     * ```
+     *
+     * @param string   $table    Table name **without** WordPress prefix.
+     * @param callable $callback Callback that receives the Schema instance to define columns, indexes, etc.
+     *
+     * @return void
+     */
+    public static function createIfNotExists(string $table, callable $callback): void
+    {
+        global $wpdb;
+        $fullTable = $wpdb->prefix . $table;
+
+        // Check if table already exists; skip if true
+        if ($wpdb->get_var("SHOW TABLES LIKE '{$fullTable}'") === $fullTable) {
+            return;
+        }
+
+        // Table does not exist, create it using Schema
+        static::create($table, $callback);
+    }
+
+    /**
      * Compile and run the SQL using dbDelta.
      *
      * @return void
