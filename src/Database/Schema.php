@@ -76,6 +76,23 @@ class Schema
     }
 
     /**
+     * Drop a table using WPDB prefix.
+     *
+     * Can be called statically:
+     * ```php
+     * Schema::dropTable('my_table'); // 'my_table' without prefix
+     * ```
+     *
+     * @param string $table Table name without prefix
+     * @return void
+     */
+    public static function dropTable(string $table): void
+    {
+        $schema = new static($table);
+        $schema->wpdb->query("DROP TABLE IF EXISTS {$schema->table}");
+    }
+
+    /**
      * Add an auto-incrementing primary key column (usually 'id' INT UNSIGNED AUTO_INCREMENT PRIMARY KEY).
      *
      * @param string $name Column name
