@@ -309,16 +309,16 @@ class Schema
      */
     public static function createIfNotExists(string $table, callable $callback): void
     {
-        global $wpdb;
-        $fullTable = $wpdb->prefix . $table;
+        $schema = new static($table);
 
         // Check if table already exists; skip if true
-        if ($wpdb->get_var("SHOW TABLES LIKE '{$fullTable}'") === $fullTable) {
+        if ($schema->wpdb->get_var("SHOW TABLES LIKE '{$schema->table}'") === $schema->table) {
             return;
         }
 
         // Table does not exist, create it using Schema
-        static::create($table, $callback);
+        $callback($schema);
+        $schema->build();
     }
 
     /**
