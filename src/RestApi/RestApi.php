@@ -167,12 +167,11 @@ class RestApi
      */
     private static function plain_permalink_fallback(string $route, callable $callback): void
     {
-        // Use init hook to ensure WordPress query vars are ready
         add_action('init', function () use ($route, $callback) {
             global $wp_rewrite;
 
             // Only apply fallback if pretty permalinks are disabled
-            if (empty($wp_rewrite->rules)) {
+            if (empty($wp_rewrite->permalink_structure)) {
 
                 // Add 'rest_route' as a valid query var
                 add_filter('query_vars', function ($vars) {
@@ -180,12 +179,26 @@ class RestApi
                     return $vars;
                 });
 
-                // Intercept plain permalink requests during request parsing
+                // Handle direct /wp-json/... requests when permalinks are plain
                 add_action('parse_request', function ($wp) use ($route, $callback) {
+                    $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+
+                    if (preg_match('#^/wp-json/(.*)$#', $request_uri, $matches)) {
+                        // Normalize request (strip query args, leading/trailing slashes)
+                        $requested = trim($matches[1], '/');
+
+                        if ($requested === $route) {
+                            // Call the callback directly
+                            $response = call_user_func($callback, null);
+                            wp_send_json($response);
+                            exit;
+                        }
+                    }
+
+                    // Fallback: handle ?rest_route=...
                     if (!empty($_GET['rest_route'])) {
                         $requested = ltrim($_GET['rest_route'], '/');
                         if ($requested === $route) {
-                            // Call the route callback and send JSON response immediately
                             $response = call_user_func($callback, null);
                             wp_send_json($response);
                             exit;
