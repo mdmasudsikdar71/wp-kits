@@ -71,6 +71,10 @@ class MigrationManager
      */
     protected function createMigrationsTable(): void
     {
+        if ($this->wpdb->get_var("SHOW TABLES LIKE '{$this->tableName}'") === $this->tableName) {
+            return; // Table already exists, skip creation
+        }
+
         $schema = new Schema($this->migrationTable);
 
         // Define columns
