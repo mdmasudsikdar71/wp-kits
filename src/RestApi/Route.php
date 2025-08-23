@@ -14,19 +14,19 @@ namespace MDMasudSikdar\WpKits\RestApi;
  * use MyPlugin\Controllers\HelloController;
  *
  * // GET route
- * Route::get('wpbp/v1/hello', [HelloController::class, 'index']);
+ * Route::get('wpkits/v1/hello', [HelloController::class, 'index']);
  *
  * // POST route
- * Route::post('wpbp/v1/hello', [HelloController::class, 'store']);
+ * Route::post('wpkits/v1/hello', [HelloController::class, 'store']);
  *
  * // PUT route
- * Route::put('wpbp/v1/hello/{id}', [HelloController::class, 'update']);
+ * Route::put('wpkits/v1/hello/{id}', [HelloController::class, 'update']);
  *
  * // PATCH route
- * Route::patch('wpbp/v1/hello/{id}', [HelloController::class, 'partialUpdate']);
+ * Route::patch('wpkits/v1/hello/{id}', [HelloController::class, 'partialUpdate']);
  *
  * // DELETE route
- * Route::delete('wpbp/v1/hello/{id}', [HelloController::class, 'destroy']);
+ * Route::delete('wpkits/v1/hello/{id}', [HelloController::class, 'destroy']);
  * ```
  *
  * @package MDMasudSikdar\WpKits\RestApi
@@ -36,7 +36,7 @@ final class Route
     /**
      * Register a GET route.
      *
-     * @param string        $uri REST route URI, e.g. 'wpbp/v1/hello'
+     * @param string        $uri REST route URI, e.g. 'wpkits/v1/hello'
      * @param array         $controller Controller array: [Class::class, 'method']
      * @param callable|null $permission Optional permission callback
      * @param array         $args Optional argument schema

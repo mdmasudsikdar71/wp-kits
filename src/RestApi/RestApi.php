@@ -20,7 +20,7 @@ class RestApi
     /**
      * Register a simple REST route with a callback function.
      *
-     * @param string        $route Full route string, e.g. 'wpbp/v1/hello'
+     * @param string        $route Full route string, e.g. 'wpkits/v1/hello'
      * @param string        $method HTTP method: GET, POST, PUT, DELETE
      * @param callable      $callback Function that handles the request
      * @param callable|null $permission_callback Optional permission callback
@@ -51,7 +51,7 @@ class RestApi
      *
      * Accepts array syntax [Class::class, 'method'] instead of string "Controller@method".
      *
-     * @param string        $route Full route string, e.g. 'wpbp/v1/hello'
+     * @param string        $route Full route string, e.g. 'wpkits/v1/hello'
      * @param string        $method HTTP method: GET, POST, PUT, DELETE
      * @param array         $controller Array with class and method: [Class::class, 'method']
      * @param callable|null $permission_callback Optional permission callback
@@ -129,7 +129,7 @@ class RestApi
     /**
      * Extract the namespace part from a full route.
      *
-     * E.g. 'wpbp/v1/hello' => 'wpbp/v1'
+     * E.g. 'wpkits/v1/hello' => 'wpkits/v1'
      *
      * @param string $route Full route string
      * @return string Namespace
@@ -143,7 +143,7 @@ class RestApi
     /**
      * Extract the endpoint part from a full route.
      *
-     * E.g. 'wpbp/v1/hello' => '/hello'
+     * E.g. 'wpkits/v1/hello' => '/hello'
      *
      * @param string $route Full route string
      * @return string Endpoint string
