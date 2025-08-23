@@ -28,7 +28,7 @@ class Shortcode
      *     return 'Hello, world!';
      * });
      *
-     * Shortcode::register('wpbp_button', function ($atts) {
+     * Shortcode::register('wpkits_button', function ($atts) {
      *     $atts = shortcode_atts([
      *         'text' => 'Click Me',
      *         'url'  => '#',

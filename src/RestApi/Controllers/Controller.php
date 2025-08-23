@@ -47,27 +47,27 @@ abstract class Controller
      * Unified response helper.
      *
      * Wraps any data in a standardized JSON structure.
-     * Ensures consistent API response across all controllers.
+     * Preserves WP_REST_Response headers and status if already provided.
      *
      * @param mixed $payload Data or error message to return.
-     * @param bool $success Whether the request was successful (true/false).
+     * @param bool $success Whether the request was successful.
      * @param int $status HTTP status code (default 200).
-     * @param array $meta Optional additional metadata to include.
-     * @return \WP_REST_Response Standard WordPress REST API response.
+     * @param array $headers Optional headers to send.
+     *
+     * @return \WP_REST_Response
      *
      * @example
      * ```php
-     * return $this->respond(['user' => $userData], true, 200);
+     * return $this->respond(['user' => $userData], true, 200, ['X-Custom' => 'WPBP']);
      * ```
      */
     protected function respond(
         mixed $payload,
         bool $success = true,
         int $status = 200,
-        array $meta = []
+        array $headers = []
     ): \WP_REST_Response {
-        // Call the RestApi helper to wrap the payload with success flag
-        return RestApi::response($payload, $success, $status);
+        return RestApi::response($payload, $success, $status, $headers);
     }
 
     /**

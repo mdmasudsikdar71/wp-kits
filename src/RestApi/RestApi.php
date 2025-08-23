@@ -110,20 +110,36 @@ class RestApi
     /**
      * Standardized REST API response.
      *
-     * Ensures consistent structure for success/failure responses.
+     * Wraps raw data but preserves WP_REST_Response instances (headers & status intact).
      *
-     * @param mixed $payload Response data or error message
+     * @param mixed $payload Response data or WP_REST_Response
      * @param bool  $success Whether the request was successful
      * @param int   $status HTTP status code (default 200)
+     * @param array $headers Optional headers
      *
      * @return \WP_REST_Response
      */
-    public static function response(mixed $payload, bool $success = true, int $status = 200): \WP_REST_Response
+    public static function response(mixed $payload, bool $success = true, int $status = 200, array $headers = []): \WP_REST_Response
     {
-        return new \WP_REST_Response([
+        // Already a WP_REST_Response? Return as-is
+        if ($payload instanceof \WP_REST_Response) {
+            return $payload;
+        }
+
+        // Prepare structured response
+        $response_data = [
             'success' => $success,
-            'payload' => $payload,
-        ], $status);
+            'data'    => $payload,
+        ];
+
+        $response = new \WP_REST_Response($response_data, $status);
+
+        // Add custom headers if any
+        foreach ($headers as $key => $value) {
+            $response->header($key, $value);
+        }
+
+        return $response;
     }
 
     /**
