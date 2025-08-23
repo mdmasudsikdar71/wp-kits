@@ -103,6 +103,31 @@ abstract class Model
     }
 
     /**
+     * Get all records from the table.
+     *
+     * Ignores any where/order/limit/offset constraints.
+     *
+     * @return array<int, array<string, mixed>>
+     *
+     * @example
+     * ```php
+     * $allProviders = NotificationProviderModel::query()->all();
+     * ```
+     */
+    public function all(): array
+    {
+        $tableName = $this->db->prefix . $this->table;
+
+        $sql = "SELECT * FROM {$tableName}";
+
+        if ($this->softDeletes) {
+            $sql .= " WHERE deleted_at IS NULL";
+        }
+
+        return $this->db->get_results($sql, ARRAY_A);
+    }
+
+    /**
      * Add a where condition.
      *
      * @param string $column
