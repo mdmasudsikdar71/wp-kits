@@ -2,12 +2,6 @@
 
 namespace MDMasudSikdar\WpKits\Helpers;
 
-use Exception;
-
-if (!defined('ABSPATH')) {
-    die('Direct access not allowed.');
-}
-
 /**
  * Class Language
  *
@@ -62,13 +56,16 @@ final class Language
     /**
      * Ensure the helper has been initialized.
      *
-     * @throws Exception If the helper has not been initialized with a text domain
+     * Stops execution using wp_die() if the helper is not initialized.
+     *
+     * @return void
      */
     private static function ensureInit(): void
     {
         if (self::$domain === null) {
-            throw new Exception(
-                'Language helper not initialized. Call Language::init() with plugin text domain first.'
+            wp_die(
+                esc_html__('Language helper not initialized. Call Language::init() with plugin text domain first.', 'default-text-domain'),
+                esc_html__('Plugin Error', 'default-text-domain')
             );
         }
     }
@@ -78,7 +75,6 @@ final class Language
      *
      * @param string $text The string to translate
      * @return string Translated string
-     * @throws Exception If the helper is not initialized
      *
      * @example
      * echo Language::__('Settings');
@@ -94,7 +90,6 @@ final class Language
      *
      * @param string $text The string to translate and echo
      * @return void
-     * @throws Exception If the helper is not initialized
      *
      * @example
      * Language::_e('Welcome Admin');
@@ -111,7 +106,6 @@ final class Language
      * @param string $text The string to translate
      * @param string $context The context for translators
      * @return string Translated string with context
-     * @throws Exception If the helper is not initialized
      *
      * @example
      * echo Language::_x('Post', 'noun');
@@ -127,7 +121,6 @@ final class Language
      *
      * @param string $text The string to translate and escape
      * @return string Escaped translated string
-     * @throws Exception If the helper is not initialized
      *
      * @example
      * echo Language::esc_html__('Settings');
@@ -143,7 +136,6 @@ final class Language
      *
      * @param string $text The string to translate, escape, and echo
      * @return void
-     * @throws Exception If the helper is not initialized
      *
      * @example
      * Language::esc_html_e('Welcome Admin');
@@ -158,7 +150,6 @@ final class Language
      * Get the plugin text domain currently in use.
      *
      * @return string The plugin text domain
-     * @throws Exception If the helper is not initialized
      *
      * @example
      * $domain = Language::getDomain();
