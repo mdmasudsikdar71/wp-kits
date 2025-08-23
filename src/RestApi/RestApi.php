@@ -128,10 +128,10 @@ class RestApi
 
         // Prepare structured response
         $response_data = [
-            'status'  => $status,
             'success' => $success,
             'payload'    => $payload,
-            'headers' => $headers
+            'headers' => $headers,
+            'status'  => $status
         ];
 
         $response = new \WP_REST_Response($response_data, $status);
