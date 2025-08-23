@@ -76,17 +76,17 @@ class Schema
     }
 
     /**
-     * Drop a table using WPDB prefix.
+     * Drop a table
      *
      * Can be called statically:
      * ```php
-     * Schema::dropTable('my_table'); // 'my_table' without prefix
+     * Schema::drop('my_table'); // 'my_table' without prefix
      * ```
      *
      * @param string $table Table name without prefix
      * @return void
      */
-    public static function dropTable(string $table): void
+    public static function drop(string $table): void
     {
         $schema = new static($table);
         $schema->wpdb->query("DROP TABLE IF EXISTS {$schema->table}");
