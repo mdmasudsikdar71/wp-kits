@@ -2,6 +2,8 @@
 
 namespace MDMasudSikdar\WpKits\Database;
 
+use MDMasudSikdar\WpKits\Traits\SingletonTrait;
+
 /**
  * Class MigrationManager
  *
@@ -9,7 +11,7 @@ namespace MDMasudSikdar\WpKits\Database;
  *
  * Usage:
  * ```php
- * $migrator = new MigrationManager('plugin_migrations');
+ * $migrator = MigrationManager::init(); // Singleton instance
  * $migrator->runMigrations([
  *    new CreateBooksTable(),
  *    new AddAuthorsTable(),
@@ -20,6 +22,8 @@ namespace MDMasudSikdar\WpKits\Database;
  */
 class MigrationManager
 {
+    use SingletonTrait;
+
     /**
      * The wpdb global object.
      *
@@ -32,7 +36,7 @@ class MigrationManager
      *
      * @var string
      */
-    protected string $migrationTable;
+    protected string $migrationTable = 'plugin_migrations';
 
     /**
      * Full table name with prefix.
@@ -42,16 +46,20 @@ class MigrationManager
     protected string $tableName;
 
     /**
-     * MigrationManager constructor.
+     * Private constructor for singleton.
      *
-     * @param string $migrationTable Table name without prefix (default: plugin_migrations)
+     * @param string|null $migrationTable Optional table name without prefix
      */
-    public function __construct(string $migrationTable = 'plugin_migrations')
+    private function __construct(?string $migrationTable = null)
     {
         global $wpdb;
         $this->wpdb = $wpdb;
-        $this->migrationTable = $migrationTable;
-        $this->tableName = $wpdb->prefix . $migrationTable;
+
+        if ($migrationTable) {
+            $this->migrationTable = $migrationTable;
+        }
+
+        $this->tableName = $wpdb->prefix . $this->migrationTable;
 
         $this->createMigrationsTable();
     }
@@ -65,7 +73,7 @@ class MigrationManager
     {
         $schema = new Schema($this->migrationTable);
 
-        // Create table with migration name and batch/timestamps
+        // Define columns
         $schema->increments('id');
         $schema->string('migration', 191);
         $schema->integer('batch');
@@ -81,20 +89,21 @@ class MigrationManager
      * @param object[] $migrations Array of migration class instances.
      * @return void
      */
-    public function runMigrations(array $migrations): void
+    public static function runMigrations(array $migrations): void
     {
+        $instance = static::init(); // Get singleton instance
         foreach ($migrations as $migration) {
             $migrationName = get_class($migration);
 
-            if ($this->hasRun($migrationName)) {
+            if ($instance->hasRun($migrationName)) {
                 continue; // Skip if already run
             }
 
             $migration->up();
 
             // Record the migration run with batch number
-            $batch = $this->getCurrentBatch() + 1;
-            $this->logMigration($migrationName, $batch);
+            $batch = $instance->getCurrentBatch() + 1;
+            $instance->logMigration($migrationName, $batch);
         }
     }
 
