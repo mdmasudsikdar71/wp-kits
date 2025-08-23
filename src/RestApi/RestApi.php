@@ -205,6 +205,15 @@ class RestApi
      */
     public static function enablePlainPermalinkFallback(): void
     {
+        static $enabled = false;
+
+        if ($enabled) {
+            // Already enabled, do nothing
+            return;
+        }
+
+        $enabled = true;
+
         add_action('parse_request', function ($wp) {
             // Only apply when permalinks are plain
             if (get_option('permalink_structure') === '') {
