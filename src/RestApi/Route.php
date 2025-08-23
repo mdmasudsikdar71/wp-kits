@@ -5,19 +5,28 @@ namespace MDMasudSikdar\WpKits\RestApi;
 /**
  * Class Route
  *
- * Provides a simple, Laravel-style DSL for registering WordPress REST API routes.
+ * Provides a Laravel-style, clean static API for registering WordPress REST routes.
+ * Supports GET, POST, PUT, PATCH, and DELETE methods.
  *
- * Wraps the RestApi helper/service to make route registration
- * clean, readable, and consistent across all plugins.
- *
- * Usage examples:
+ * Example usage:
  * ```php
  * use MDMasudSikdar\WpKits\RestApi\Route;
+ * use MyPlugin\Controllers\HelloController;
  *
- * Route::get('myplugin/v1/hello', 'HelloController@index');
- * Route::post('myplugin/v1/hello', 'HelloController@store');
- * Route::patch('myplugin/v1/hello/{id}', 'HelloController@partialUpdate');
- * Route::delete('myplugin/v1/hello/{id}', 'HelloController@destroy');
+ * // GET route
+ * Route::get('wpbp/v1/hello', [HelloController::class, 'index']);
+ *
+ * // POST route
+ * Route::post('wpbp/v1/hello', [HelloController::class, 'store']);
+ *
+ * // PUT route
+ * Route::put('wpbp/v1/hello/{id}', [HelloController::class, 'update']);
+ *
+ * // PATCH route
+ * Route::patch('wpbp/v1/hello/{id}', [HelloController::class, 'partialUpdate']);
+ *
+ * // DELETE route
+ * Route::delete('wpbp/v1/hello/{id}', [HelloController::class, 'destroy']);
  * ```
  *
  * @package MDMasudSikdar\WpKits\RestApi
@@ -27,107 +36,98 @@ final class Route
     /**
      * Register a GET route.
      *
-     * @param string $uri The route URI, e.g., 'myplugin/v1/hello'
-     * @param string $controller Controller@method string, e.g., 'HelloController@index'
+     * @param string        $uri REST route URI, e.g. 'wpbp/v1/hello'
+     * @param array         $controller Controller array: [Class::class, 'method']
      * @param callable|null $permission Optional permission callback
-     * @param array $args Optional argument schema for validation
-     * @return void
+     * @param array         $args Optional argument schema
      */
-    public static function get(string $uri, string $controller, ?callable $permission = null, array $args = []): void
+    public static function get(string $uri, array $controller, ?callable $permission = null, array $args = []): void
     {
-        // Call generic register method with HTTP method 'GET'
+        // Delegate to generic register method
         self::register('GET', $uri, $controller, $permission, $args);
     }
 
     /**
      * Register a POST route.
      *
-     * @param string $uri The route URI
-     * @param string $controller Controller@method string
+     * Typically used for creating resources.
+     *
+     * @param string        $uri REST route URI
+     * @param array         $controller Controller array
      * @param callable|null $permission Optional permission callback
-     * @param array $args Optional argument schema
-     * @return void
+     * @param array         $args Optional argument schema
      */
-    public static function post(string $uri, string $controller, ?callable $permission = null, array $args = []): void
+    public static function post(string $uri, array $controller, ?callable $permission = null, array $args = []): void
     {
-        // Call generic register method with HTTP method 'POST'
         self::register('POST', $uri, $controller, $permission, $args);
     }
 
     /**
      * Register a PUT route.
      *
-     * Typically used to fully update a resource.
+     * Typically used for full updates of resources.
      *
-     * @param string $uri The route URI
-     * @param string $controller Controller@method string
+     * @param string        $uri REST route URI
+     * @param array         $controller Controller array
      * @param callable|null $permission Optional permission callback
-     * @param array $args Optional argument schema
-     * @return void
+     * @param array         $args Optional argument schema
      */
-    public static function put(string $uri, string $controller, ?callable $permission = null, array $args = []): void
+    public static function put(string $uri, array $controller, ?callable $permission = null, array $args = []): void
     {
-        // Call generic register method with HTTP method 'PUT'
         self::register('PUT', $uri, $controller, $permission, $args);
     }
 
     /**
      * Register a PATCH route.
      *
-     * Typically used to partially update a resource.
+     * Typically used for partial updates of resources.
      *
-     * @param string $uri The route URI
-     * @param string $controller Controller@method string
+     * @param string        $uri REST route URI
+     * @param array         $controller Controller array
      * @param callable|null $permission Optional permission callback
-     * @param array $args Optional argument schema
-     * @return void
+     * @param array         $args Optional argument schema
      */
-    public static function patch(string $uri, string $controller, ?callable $permission = null, array $args = []): void
+    public static function patch(string $uri, array $controller, ?callable $permission = null, array $args = []): void
     {
-        // Call generic register method with HTTP method 'PATCH'
         self::register('PATCH', $uri, $controller, $permission, $args);
     }
 
     /**
      * Register a DELETE route.
      *
-     * Typically used to remove a resource.
+     * Typically used for removing resources.
      *
-     * @param string $uri The route URI
-     * @param string $controller Controller@method string
+     * @param string        $uri REST route URI
+     * @param array         $controller Controller array
      * @param callable|null $permission Optional permission callback
-     * @param array $args Optional argument schema
-     * @return void
+     * @param array         $args Optional argument schema
      */
-    public static function delete(string $uri, string $controller, ?callable $permission = null, array $args = []): void
+    public static function delete(string $uri, array $controller, ?callable $permission = null, array $args = []): void
     {
-        // Call generic register method with HTTP method 'DELETE'
         self::register('DELETE', $uri, $controller, $permission, $args);
     }
 
     /**
      * Generic route registration method.
      *
-     * Handles the actual registration with RestApi::controller(),
-     * which internally binds the controller, injects WP_REST_Request,
-     * handles exceptions, and returns unified responses.
+     * Handles actual route registration by delegating to the RestApi helper.
+     * This method enforces array syntax [Class::class, 'method'] for better type safety
+     * and autocompletion in IDEs.
      *
-     * @param string $method HTTP method (GET, POST, PUT, PATCH, DELETE)
-     * @param string $uri The route URI
-     * @param string $controller Controller@method string
+     * @param string        $method HTTP method (GET, POST, PUT, PATCH, DELETE)
+     * @param string        $uri REST route URI
+     * @param array         $controller Controller array [Class::class, 'method']
      * @param callable|null $permission Optional permission callback
-     * @param array $args Optional argument schema
-     * @return void
+     * @param array         $args Optional argument schema for validation
      */
     protected static function register(
         string $method,
         string $uri,
-        string $controller,
+        array $controller,
         ?callable $permission,
         array $args
     ): void {
-
-        // Delegate to the RestApi helper to register the controller as a route
+        // Delegate route registration to RestApi::controller
         RestApi::controller($uri, $method, $controller, $permission, $args);
     }
 }

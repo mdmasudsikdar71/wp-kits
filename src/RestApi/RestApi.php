@@ -7,40 +7,24 @@ use ReflectionMethod;
 /**
  * Class RestApi
  *
- * Provides a static utility to register WordPress REST API routes
- * with a clean and reusable syntax.
+ * Provides a centralized utility for registering WordPress REST API routes
+ * using clean, reusable, and modern syntax.
  *
- * @example Registering a GET route
- * ```php
- * RestApi::register(
- *     'wpkits/v1/hello',
- *     'GET',
- *     fn() => ['message' => 'Hello World']
- * );
- * ```
+ * Supports both simple callbacks and controller method registration
+ * using array syntax: [ClassName::class, 'method'].
  *
- * @example Registering a POST route with permission callback
- * ```php
- * RestApi::register(
- *     'wpkits/v1/secure',
- *     'POST',
- *     fn($request) => ['message' => 'Authorized'],
- *     fn() => current_user_can('edit_posts')
- * );
- * ```
- *
- * @package MDMasudSikdar\WpKits\Helpers
+ * @package MDMasudSikdar\WpKits\RestApi
  */
 class RestApi
 {
     /**
-     * Register a REST route.
+     * Register a simple REST route with a callback function.
      *
-     * @param string $route Full route path, e.g. 'wpkits/v1/example'.
-     * @param string $method HTTP method: GET, POST, PUT, DELETE, etc.
-     * @param callable $callback The function to handle the request.
-     * @param callable|null $permission_callback Optional permission callback.
-     * @param array $args Arguments schema for validation.
+     * @param string        $route Full route string, e.g. 'wpbp/v1/hello'
+     * @param string        $method HTTP method: GET, POST, PUT, DELETE
+     * @param callable      $callback Function that handles the request
+     * @param callable|null $permission_callback Optional permission callback
+     * @param array         $args Optional schema for validation
      */
     public static function register(
         string $route,
@@ -49,57 +33,72 @@ class RestApi
         ?callable $permission_callback = null,
         array $args = []
     ): void {
+        // Use WordPress register_rest_route function
         register_rest_route(
-            self::normalize_namespace($route),
-            self::normalize_endpoint($route),
+            self::normalize_namespace($route), // Extract the namespace part
+            self::normalize_endpoint($route),  // Extract the endpoint part
             [
-                'methods'             => strtoupper($method),
-                'callback'            => $callback,
-                'permission_callback' => $permission_callback ?? '__return_true',
-                'args'                => $args,
+                'methods'             => strtoupper($method),           // Ensure uppercase HTTP method
+                'callback'            => $callback,                    // Route handler
+                'permission_callback' => $permission_callback ?? '__return_true', // Default allow all
+                'args'                => $args,                        // Optional arguments schema
             ]
         );
     }
 
     /**
-     * Register a controller method as a REST endpoint.
+     * Register a controller class method as a REST endpoint.
      *
-     * @param string $route e.g. 'wpkits/v1/hello'
-     * @param string $method e.g. GET|POST|PUT|DELETE
-     * @param string $controller e.g. App\Controllers\HelloController@index
-     * @param callable|null $permission_callback
-     * @param array $args
+     * Accepts array syntax [Class::class, 'method'] instead of string "Controller@method".
+     *
+     * @param string        $route Full route string, e.g. 'wpbp/v1/hello'
+     * @param string        $method HTTP method: GET, POST, PUT, DELETE
+     * @param array         $controller Array with class and method: [Class::class, 'method']
+     * @param callable|null $permission_callback Optional permission callback
+     * @param array         $args Optional arguments schema
      */
     public static function controller(
         string $route,
         string $method,
-        string $controller,
+        array $controller,
         ?callable $permission_callback = null,
         array $args = []
     ): void {
-        [$class, $action] = explode('@', $controller);
+        // Extract class and method from array
+        [$class, $action] = $controller;
 
+        // Delegate to the register method
         self::register(
             $route,
             $method,
             function (\WP_REST_Request $request) use ($class, $action) {
+                // Instantiate the controller
                 $instance = new $class();
 
+                // Validate method exists
                 if (!method_exists($instance, $action)) {
-                    return self::response("Method {$action} not found in {$class}", false, 404);
+                    return self::response(
+                        "Method {$action} not found in {$class}", // Error message
+                        false,
+                        404
+                    );
                 }
 
+                // Reflection for argument inspection
                 $reflection = new ReflectionMethod($instance, $action);
-                $params     = $reflection->getParameters();
+                $params = $reflection->getParameters();
 
                 try {
+                    // Invoke method with WP_REST_Request if required
                     $result = $reflection->invokeArgs(
                         $instance,
                         count($params) > 0 ? [$request] : []
                     );
 
+                    // Return standardized response
                     return self::response($result, true);
                 } catch (\Throwable $e) {
+                    // Return error response if exception occurs
                     return self::response($e->getMessage(), false, 500);
                 }
             },
@@ -109,17 +108,14 @@ class RestApi
     }
 
     /**
-     * Unified response wrapper.
+     * Standardized REST API response.
      *
-     * Always returns the same structure:
-     * [
-     *   'success' => bool,
-     *   'payload' => mixed, // either data or error message
-     * ]
+     * Ensures consistent structure for success/failure responses.
      *
-     * @param mixed $payload Data or error message.
-     * @param bool $success Success state.
-     * @param int $status HTTP status code.
+     * @param mixed $payload Response data or error message
+     * @param bool  $success Whether the request was successful
+     * @param int   $status HTTP status code (default 200)
+     *
      * @return \WP_REST_Response
      */
     public static function response(mixed $payload, bool $success = true, int $status = 200): \WP_REST_Response
@@ -131,10 +127,12 @@ class RestApi
     }
 
     /**
-     * Extract the namespace from a full route string.
+     * Extract the namespace part from a full route.
      *
-     * @param string $route E.g. 'wpkits/v1/endpoint'
-     * @return string Namespace, e.g. 'wpkits/v1'
+     * E.g. 'wpbp/v1/hello' => 'wpbp/v1'
+     *
+     * @param string $route Full route string
+     * @return string Namespace
      */
     private static function normalize_namespace(string $route): string
     {
@@ -143,10 +141,12 @@ class RestApi
     }
 
     /**
-     * Extract the endpoint from a full route string.
+     * Extract the endpoint part from a full route.
      *
-     * @param string $route E.g. 'wpkits/v1/endpoint'
-     * @return string Endpoint, e.g. '/endpoint'
+     * E.g. 'wpbp/v1/hello' => '/hello'
+     *
+     * @param string $route Full route string
+     * @return string Endpoint string
      */
     private static function normalize_endpoint(string $route): string
     {
