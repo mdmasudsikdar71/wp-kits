@@ -70,8 +70,11 @@ class RestApi
 
         // Wrap the permission callback to include nonce verification automatically
         $permission_callback = function (\WP_REST_Request $request) use ($permission_callback) {
-            if (!$request->get_method() != 'GET' && !self::verifyNonce($request->get_header('X-WP-Nonce'), $request->get_header('X-Plugin-Nonce'))) {
-                return self::response(Language::__('Invalid or missing nonce'), false, 403);
+            // Only verify nonce for non-public GET requests
+            if (!$request->get_method() != 'GET') {
+                if (!self::verifyNonce($request->get_header('X-WP-Nonce'), $request->get_header('X-Plugin-Nonce'))) {
+                    return self::response(Language::__('Invalid or missing nonce'), false, 403);
+                }
             }
 
             // If an original permission callback exists, call it
