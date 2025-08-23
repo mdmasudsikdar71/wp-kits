@@ -311,9 +311,12 @@ class Schema
     {
         $schema = new static($table);
 
-        // Check if table already exists; skip if true
-        if ($schema->wpdb->get_var("SHOW TABLES LIKE '{$schema->table}'") === $schema->table) {
-            return;
+        // Get the table name safely for SQL
+        $tableName = esc_sql($schema->table);
+
+        // Check if table exists; returns table name or null
+        if ($schema->wpdb->get_var("SHOW TABLES LIKE '{$tableName}'")) {
+            return; // Table already exists, skip creation
         }
 
         // Table does not exist, create it using Schema

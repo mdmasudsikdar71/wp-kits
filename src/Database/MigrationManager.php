@@ -71,7 +71,11 @@ class MigrationManager
      */
     protected function createMigrationsTable(): void
     {
-        if ($this->wpdb->get_var("SHOW TABLES LIKE '{$this->tableName}'") === $this->tableName) {
+        // Get the table name safely for SQL
+        $table = esc_sql($this->tableName);
+
+        // Check if table exists; returns table name or null
+        if ($this->wpdb->get_var("SHOW TABLES LIKE '{$table}'")) {
             return; // Table already exists, skip creation
         }
 
