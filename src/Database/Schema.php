@@ -205,6 +205,20 @@ class Schema
     }
 
     /**
+     * Mark the last added column as nullable.
+     *
+     * @return $this
+     */
+    public function nullable(): self
+    {
+        if (!empty($this->columns)) {
+            $lastIndex = count($this->columns) - 1;
+            $this->columns[$lastIndex] = str_replace("NOT NULL", "NULL", $this->columns[$lastIndex]);
+        }
+        return $this;
+    }
+
+    /**
      * Add a BOOLEAN column.
      *
      * @param string $name
