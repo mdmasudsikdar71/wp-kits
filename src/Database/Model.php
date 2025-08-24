@@ -130,7 +130,7 @@ abstract class Model
     /**
      * Add a where condition.
      *
-     * @param string $column
+     * @param array|string $column
      * @param mixed $value
      * @return static
      *
@@ -139,9 +139,17 @@ abstract class Model
      * Model::query()->where('age', 30)->get();
      * ```
      */
-    public function where(string $column, mixed $value): static
+    public function where(array|string $column, mixed $value = null): static
     {
-        $this->wheres[] = [$column, $value];
+        if (is_array($column)) {
+            // multiple conditions at once
+            foreach ($column as $col => $val) {
+                $this->wheres[$col] = $val;
+            }
+        } else {
+            // single condition
+            $this->wheres[$column] = $value;
+        }
         return $this;
     }
 
