@@ -205,6 +205,20 @@ class Schema
     }
 
     /**
+     * Add a BOOLEAN column.
+     *
+     * @param string $name
+     * @param bool $default
+     * @return $this
+     */
+    public function boolean(string $name, bool $default = false): self
+    {
+        $defaultSql = $default ? '1' : '0';
+        $this->columns[] = "`$name` TINYINT(1) NOT NULL DEFAULT $defaultSql";
+        return $this;
+    }
+
+    /**
      * Alter an existing table.
      *
      * Usage:
