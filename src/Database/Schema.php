@@ -258,6 +258,34 @@ class Schema
     }
 
     /**
+     * Add a LONGTEXT column.
+     *
+     * @param string $name Column name
+     * @return $this
+     */
+    public function longText(string $name): self
+    {
+        $this->columns[] = "`$name` LONGTEXT NOT NULL";
+        return $this;
+    }
+
+    /**
+     * Add a UNIQUE constraint to one or more columns.
+     *
+     * @param string|string[] $columns Column name or array of columns
+     * @param string|null $indexName Optional unique index name
+     * @return $this
+     */
+    public function unique(string|array $columns, ?string $indexName = null): self
+    {
+        $columns = (array) $columns;
+        $indexName = $indexName ?: $this->table . '_' . implode('_', $columns) . '_unique';
+        $cols = implode('`, `', $columns);
+        $this->indexes[] = "UNIQUE KEY `$indexName` (`$cols`)";
+        return $this;
+    }
+
+    /**
      * Alter an existing table.
      *
      * Usage:
