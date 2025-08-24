@@ -205,6 +205,31 @@ class Schema
     }
 
     /**
+     * Set a default value for the last added column.
+     *
+     * @param mixed $value
+     * @return $this
+     */
+    public function default(mixed $value): self
+    {
+        if (!empty($this->columns)) {
+            $lastIndex = count($this->columns) - 1;
+
+            // Proper SQL escaping for string defaults
+            if (is_string($value)) {
+                $value = "'" . addslashes($value) . "'";
+            } elseif (is_bool($value)) {
+                $value = $value ? 1 : 0;
+            } elseif ($value === null) {
+                $value = "NULL";
+            }
+
+            $this->columns[$lastIndex] .= " DEFAULT {$value}";
+        }
+        return $this;
+    }
+
+    /**
      * Mark the last added column as nullable.
      *
      * @return $this
