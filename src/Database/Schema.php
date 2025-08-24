@@ -181,16 +181,26 @@ class Schema
     }
 
     /**
-     * Add an index to a column.
+     * Add an index to one or more columns.
      *
-     * @param string $column Column name
+     * @param string|string[] $columns Column name or array of columns
      * @param string|null $indexName Optional index name
      * @return $this
      */
-    public function index(string $column, ?string $indexName = null): self
+    public function index(string|array $columns, ?string $indexName = null): self
     {
-        $indexName = $indexName ?: $this->table . "_{$column}_index";
-        $this->indexes[] = "KEY `$indexName` (`$column`)";
+        // Normalize columns to array
+        $columns = (array) $columns;
+
+        // If no name given, auto-generate from table and columns
+        $indexName = $indexName ?: $this->table . '_' . implode('_', $columns) . '_index';
+
+        // Escape column names with backticks
+        $cols = implode('`, `', $columns);
+
+        // Add SQL fragment
+        $this->indexes[] = "KEY `$indexName` (`$cols`)";
+
         return $this;
     }
 
