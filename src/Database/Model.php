@@ -47,7 +47,7 @@ abstract class Model
      *
      * @var string
      */
-    protected static string $table = '';
+    protected string $table = '';
 
     /**
      * Fully prefixed table name (with WordPress $wpdb->prefix)
@@ -240,7 +240,7 @@ abstract class Model
         $this->db = $wpdb;
 
         // Combine WordPress table prefix with the child class table name
-        $this->tableName = $this->db->prefix . static::$table;
+        $this->tableName = $this->db->prefix . $this->table;
     }
 
     /**
@@ -831,7 +831,7 @@ abstract class Model
      * @param ?string $column Column to order by, defaults to created_at
      * @return static
      */
-    public function oldest(string $column = null): static
+    public function oldest(?string $column = null): static
     {
         $column = $column ?? ($this->timestamps ? $this->createdAtColumn : static::$primaryKey);
         $this->orderBy[] = [$column, 'ASC'];
