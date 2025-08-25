@@ -1755,7 +1755,13 @@ abstract class Model
         }
 
         // Escape each column name
-        $escaped = array_map(fn($col) => "`" . str_replace("`", "``", $col) . "`", $this->selectedColumns);
+        $escaped = array_map(function ($col) {
+            // Do not escape * or raw expressions like "1"
+            if ($col === '*' || is_numeric($col)) {
+                return $col;
+            }
+            return "`" . str_replace("`", "``", $col) . "`";
+        }, $this->selectedColumns);
 
         return implode(', ', $escaped);
     }
