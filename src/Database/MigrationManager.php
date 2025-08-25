@@ -3,6 +3,7 @@
 namespace MDMasudSikdar\WpKits\Database;
 
 use MDMasudSikdar\WpKits\Traits\SingletonTrait;
+use wpdb;
 
 /**
  * Class MigrationManager
@@ -27,9 +28,9 @@ class MigrationManager
     /**
      * The wpdb global object.
      *
-     * @var \wpdb
+     * @var wpdb
      */
-    protected \wpdb $wpdb;
+    protected wpdb $wpdb;
 
     /**
      * Name of the migrations tracking table (without prefix).
@@ -48,18 +49,18 @@ class MigrationManager
     /**
      * Private constructor for singleton.
      *
-     * @param string|null $migrationTable Optional table name without prefix
+     * @param string|null $migrationTable Optional table name (without wpdb prefix).
      */
     private function __construct(?string $migrationTable = null)
     {
         global $wpdb;
         $this->wpdb = $wpdb;
 
-        if ($migrationTable) {
+        if ($migrationTable && !str_starts_with($migrationTable, $this->wpdb->prefix)) {
             $this->migrationTable = $migrationTable;
         }
 
-        $this->tableName = $wpdb->prefix . $this->migrationTable;
+        $this->tableName = $this->wpdb->prefix . $this->migrationTable;
 
         $this->createMigrationsTable();
     }
@@ -72,18 +73,15 @@ class MigrationManager
     protected function createMigrationsTable(): void
     {
         // Get the table name safely for SQL
-        $table = esc_sql($this->tableName);
-
-        // Check if table exists; returns table name or null
-        if ($this->wpdb->get_var("SHOW TABLES LIKE '{$table}'")) {
-            return; // Table already exists, skip creation
+        if ($this->wpdb->get_var("SHOW TABLES LIKE '{$this->tableName}'")) {
+            return;
         }
 
         $schema = new Schema($this->migrationTable);
 
         // Define columns
-        $schema->increments('id');
-        $schema->string('migration', 191);
+        $schema->increments();
+        $schema->string('migration');
         $schema->integer('batch');
         $schema->dateTime('created_at');
         $schema->build();
@@ -94,13 +92,18 @@ class MigrationManager
      *
      * Migration classes should have a `up()` method to create/update tables.
      *
-     * @param object[] $migrations Array of migration class instances.
+     * @param Migration[] $migrations Array of migration class instances.
      * @return void
      */
     public static function runMigrations(array $migrations): void
     {
         $instance = static::init(); // Get singleton instance
+        $batch = $instance->getCurrentBatch() + 1;
         foreach ($migrations as $migration) {
+            if (! $migration instanceof Migration) {
+                continue; // Or throw exception
+            }
+
             $migrationName = get_class($migration);
 
             if ($instance->hasRun($migrationName)) {
@@ -110,7 +113,6 @@ class MigrationManager
             $migration->up();
 
             // Record the migration run with batch number
-            $batch = $instance->getCurrentBatch() + 1;
             $instance->logMigration($migrationName, $batch);
         }
     }
