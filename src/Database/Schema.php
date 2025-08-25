@@ -69,6 +69,7 @@ class Schema
         // Combine the WP prefix and table name for the full table identifier
         $this->table = $this->wpdb->prefix . $table;
 
+        // Default charset/collation from WP settings
         $this->charset_collate = $wpdb->get_charset_collate();
     }
 
@@ -941,42 +942,45 @@ class Schema
     /**
      * Alter an existing table with multiple operations.
      *
-     * Provides a Schema instance for the table, allowing you to add, modify,
-     * drop, or rename columns within a callback. All ALTER statements are
-     * executed via `buildAlter()`.
+     * Provides a Schema instance for the table, allowing you to:
+     * - Add new columns using methods like string(), integer(), etc.
+     * - Modify existing columns using modifyColumn()
+     * - Drop columns using dropColumn()
+     * - Rename columns using renameColumn()
+     *
+     * All ALTER statements are collected and executed in buildAlter().
      *
      * @param string $table Table name without prefix
      * @param callable $callback Callback to define table alterations
      * @return void
      * @example
      * Schema::alter('users', function($table) {
-     *     $table->string('nickname')->nullable();
-     *     $table->modifyColumn('age')->integer()->nullable()->default(0);
-     *     $table->dropColumn('middle_name');
-     *     $table->renameColumn('old_name', 'new_name');
+     *     $table->string('nickname')->nullable(); // Adds a new column
+     *     $table->modifyColumn('age')->integer()->nullable()->default(0); // Modify existing column
+     *     $table->dropColumn('middle_name'); // Drop column
+     *     $table->renameColumn('old_name', 'new_name'); // Rename column
      * });
      */
     public static function alter(string $table, callable $callback): void
     {
         $schema = new static($table);
 
-        // Return early if table does not exist
+        // Skip if the table does not exist
         if (!$schema->wpdb->get_var("SHOW TABLES LIKE '{$schema->table}'")) {
             return;
         }
 
-        // Execute the callback to define alterations
+        // Execute the user-defined callback to populate $schema->columns
         $callback($schema);
 
-        // Execute all collected ALTER TABLE statements
+        // Execute all ALTER TABLE statements
         $schema->buildAlter();
     }
 
     /**
      * Rename an existing column.
      *
-     * Adds a RENAME COLUMN operation to the internal columns array.
-     * The actual ALTER TABLE RENAME statement is executed in `buildAlter()`.
+     * Stores the rename operation in $columns for execution in buildAlter().
      *
      * @param string $from Current column name
      * @param string $to New column name
@@ -986,7 +990,6 @@ class Schema
      */
     public function renameColumn(string $from, string $to): self
     {
-        // Store rename operation for later execution
         $this->columns[] = [
             'type' => 'rename',
             'from' => $from,
@@ -999,9 +1002,8 @@ class Schema
     /**
      * Modify an existing column.
      *
-     * Starts a MODIFY operation for chainable column definition
-     * (type, nullable, default, comment). Actual ALTER TABLE
-     * MODIFY statement is executed in `buildAlter()`.
+     * Starts a MODIFY operation. Actual SQL will be generated in buildAlter().
+     * Supports chainable methods for type, nullable, default, comment, etc.
      *
      * @param string $name Column name to modify
      * @return $this Chainable for multiple operations
@@ -1010,10 +1012,9 @@ class Schema
      */
     public function modifyColumn(string $name): self
     {
-        // Store modify operation with placeholder definition
         $this->columns[] = [
             'type' => 'modify',
-            'definition' => "`$name`"
+            'definition' => "`$name`" // Placeholder, will be appended with full type & constraints
         ];
 
         return $this;
@@ -1022,8 +1023,7 @@ class Schema
     /**
      * Drop a column from the table.
      *
-     * Adds a DROP COLUMN operation to the internal columns array.
-     * The actual ALTER TABLE DROP statement is executed in `buildAlter()`.
+     * Adds a DROP COLUMN operation to $columns for execution in buildAlter().
      *
      * @param string $column Column name to drop
      * @return $this Chainable for multiple operations
@@ -1032,7 +1032,6 @@ class Schema
      */
     public function dropColumn(string $column): self
     {
-        // Store drop operation for later execution
         $this->columns[] = [
             'type' => 'drop',
             'name' => $column
@@ -1044,14 +1043,15 @@ class Schema
     /**
      * Execute all accumulated table alterations.
      *
-     * Iterates over the columns array and performs each ALTER TABLE operation:
-     * - ADD COLUMN
+     * Iterates over the $columns array and executes the appropriate
+     * ALTER TABLE SQL for each operation:
+     * - ADD COLUMN (default)
      * - MODIFY COLUMN
      * - DROP COLUMN
      * - RENAME COLUMN
      *
-     * This method is automatically called by `Schema::alter()` after
-     * defining the alterations in a callback.
+     * Each operation is executed immediately using $wpdb->query().
+     * Unknown types are safely skipped.
      *
      * @return void
      * @example
@@ -1065,10 +1065,10 @@ class Schema
     {
         foreach ($this->columns as $column) {
 
-            // Determine the type of operation
-            $type = $column['type'] ?? 'add'; // default to 'add' if not specified
+            // Determine operation type, default to 'add'
+            $type = $column['type'] ?? 'add';
 
-            // Generate the proper ALTER TABLE statement
+            // Generate proper ALTER TABLE statement based on type
             if ($type === 'add') {
                 $sql = "ALTER TABLE {$this->table} ADD COLUMN {$column['definition']}";
             } elseif ($type === 'modify') {
@@ -1078,11 +1078,11 @@ class Schema
             } elseif ($type === 'rename') {
                 $sql = "ALTER TABLE {$this->table} RENAME COLUMN `{$column['from']}` TO `{$column['to']}`";
             } else {
-                // Unknown type, skip this iteration
+                // Skip unknown operation type
                 continue;
             }
 
-            // Execute the SQL
+            // Execute SQL query
             $this->wpdb->query($sql);
         }
     }
