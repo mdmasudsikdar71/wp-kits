@@ -5,7 +5,7 @@ namespace MDMasudSikdar\WpKits\Helpers;
 use MDMasudSikdar\WpKits\Traits\SingletonTrait;
 
 /**
- * Class CronManager
+ * Class Cron
  *
  * Advanced WordPress Cron Manager with:
  * ✅ Singleton pattern via SingletonTrait
@@ -19,16 +19,16 @@ use MDMasudSikdar\WpKits\Traits\SingletonTrait;
  * Usage:
  * ```php
  * // Initialize once with plugin prefix
- * CronManager::init()->setPrefix('my_plugin');
+ * Cron::init()->setPrefix('my_plugin');
  *
  * // Anywhere later in the plugin
- * CronManager::scheduleAll();
- * CronManager::register('hourly_task', 'hourly', [$this, 'runTask']);
+ * Cron::scheduleAll();
+ * Cron::register('hourly_task', 'hourly', [$this, 'runTask']);
  * ```
  *
  * @package MDMasudSikdar\WpKits\Helpers
  */
-class CronManager
+class Cron
 {
     use SingletonTrait;
 
@@ -58,7 +58,7 @@ class CronManager
      *
      * @example
      * ```php
-     * CronManager::init()->setPrefix('my_plugin');
+     * Cron::init()->setPrefix('my_plugin');
      * ```
      */
     public function setPrefix(string $prefix): void
@@ -83,7 +83,7 @@ class CronManager
      *
      * @example
      * ```php
-     * CronManager::register(
+     * Cron::register(
      *     'hourly_task',
      *     'hourly',
      *     [$this, 'runTask'],
@@ -132,7 +132,7 @@ class CronManager
      *
      * @example
      * ```php
-     * CronManager::scheduleAll();
+     * Cron::scheduleAll();
      * ```
      */
     public function scheduleAll(): void
@@ -170,7 +170,7 @@ class CronManager
      *
      * @example
      * ```php
-     * CronManager::clearAll(true);
+     * Cron::clearAll(true);
      * ```
      */
     public function clearAll(bool $log = false): void
@@ -203,7 +203,7 @@ class CronManager
      *
      * @example
      * ```php
-     * CronManager::addCustomInterval('every_five_minutes', 300, 'Every 5 Minutes');
+     * Cron::addCustomInterval('every_five_minutes', 300, 'Every 5 Minutes');
      * ```
      */
     public function addCustomInterval(string $name, int $interval, string $display, string $textDomain = 'wordpress-plugin-boilerplate'): void
@@ -228,7 +228,7 @@ class CronManager
      *
      * @example
      * ```php
-     * if (CronManager::isScheduled('hourly_task')) {
+     * if (Cron::isScheduled('hourly_task')) {
      *     // Do something
      * }
      * ```
@@ -243,7 +243,7 @@ class CronManager
      * Magic static forwarder.
      *
      * Allows calling instance methods statically like:
-     * CronManager::scheduleAll() after init()
+     * Cron::scheduleAll() after init()
      *
      * @param string $name Method name
      * @param array $arguments Method arguments
