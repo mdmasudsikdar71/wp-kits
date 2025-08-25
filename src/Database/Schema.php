@@ -143,7 +143,7 @@ class Schema
     public function increments(string $name = 'id'): self
     {
         // Define the column as UNSIGNED, not null, auto-increment, and primary key
-        $this->columns[] = "`$name` UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY";
+        $this->columns[] = "`$name` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY";
 
         // Return $this to allow method chaining like Laravel
         return $this;
