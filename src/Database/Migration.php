@@ -2,8 +2,6 @@
 
 namespace MDMasudSikdar\WpKits\Database;
 
-use wpdb;
-
 /**
  * Abstract Migration class.
  *
@@ -17,22 +15,6 @@ use wpdb;
  */
 abstract class Migration
 {
-    /**
-     * @var wpdb Global WordPress database object.
-     */
-    protected wpdb $db;
-
-    /**
-     * Migration constructor.
-     *
-     * Initializes the global $wpdb instance.
-     */
-    public function __construct()
-    {
-        global $wpdb;
-        $this->db = $wpdb;
-    }
-
     /**
      * Run the migration.
      *
