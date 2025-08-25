@@ -2,8 +2,6 @@
 
 namespace MDMasudSikdar\WpKits\Database;
 
-use wpdb;
-
 /**
  * Abstract Base Model for WordPress
  *
@@ -37,9 +35,9 @@ abstract class Model
      *
      * Initialized automatically in the constructor.
      *
-     * @var wpdb
+     * @var \wpdb
      */
-    protected wpdb $db;
+    protected \wpdb $db;
 
     /**
      * Base table name (without WordPress prefix)

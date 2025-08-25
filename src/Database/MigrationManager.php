@@ -31,14 +31,14 @@ class MigrationManager
     /**
      * WordPress database object.
      *
-     * @var wpdb
+     * @var \wpdb
      * @example
      * ```php
      * global $wpdb;
      * echo $wpdb->prefix;
      * ```
      */
-    protected wpdb $wpdb;
+    protected \wpdb $wpdb;
 
     /**
      * Name of the migrations table without prefix.
@@ -116,7 +116,7 @@ class MigrationManager
     public static function runMigrations(array $migrations): void
     {
         // Get singleton instance
-        $instance = self::getInstance();
+        $instance = self::init();
 
         // Determine next batch number
         $batch = $instance->getCurrentBatch() + 1;
@@ -160,7 +160,7 @@ class MigrationManager
         }
 
         // Get singleton instance
-        $instance = self::getInstance();
+        $instance = self::init();
 
         // Get latest batch numbers descending
         $batches = $instance->wpdb->get_col(

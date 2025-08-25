@@ -3,7 +3,6 @@
 namespace MDMasudSikdar\WpKits\Database;
 
 use MDMasudSikdar\WpKits\Traits\ForeignKeyTrait;
-use wpdb;
 
 /**
  * Class Schema
@@ -29,10 +28,10 @@ class Schema
     /**
      * WordPress database object.
      *
-     * @var wpdb
+     * @var \wpdb
      * @example global $wpdb; $wpdb->prefix; $wpdb->get_var();
      */
-    protected wpdb $wpdb;
+    protected \wpdb $wpdb;
 
     /**
      * Full table name including WordPress prefix.
