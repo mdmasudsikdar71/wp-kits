@@ -1157,7 +1157,7 @@ abstract class Model
      * @param array $attributes Attributes to fill
      * @return static|null Newly created model or null on failure
      */
-    public static function create(array $attributes): ?static
+    public function create(array $attributes): ?static
     {
         $model = new static();
         $model->fill($attributes);
