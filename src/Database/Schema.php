@@ -934,7 +934,7 @@ class Schema
         $columns_sql = implode(",\n", $this->columns);
 
         // Build the full CREATE TABLE SQL statement
-        $sql = "CREATE TABLE {$this->table} (\n$columns_sql\n) {$this->charset_collate};";
+        $sql = "CREATE TABLE IF NOT EXISTS {$this->table} (\n$columns_sql\n) {$this->charset_collate};";
 
         // Include the WordPress upgrade functions to use dbDelta
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
