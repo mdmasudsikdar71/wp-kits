@@ -55,7 +55,7 @@ class WooCommerce
     {
         if (!self::$initialized) {
             // Check if WooCommerce core functions exist
-            self::$isActive = function_exists('wc_get_product') && function_exists('wc_get_order');
+            self::$isActive = class_exists('WooCommerce');
 
             // Mark initialization done
             self::$initialized = true;
