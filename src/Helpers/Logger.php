@@ -6,8 +6,24 @@ namespace MDMasudSikdar\WpKits\Helpers;
  * Class Logger
  *
  * Advanced logging utility for WordPress.
- * Logs messages with timestamps, severity levels, context data, backtrace information,
- * and supports writing to both PHP error log and a custom log file.
+ *
+ * Features:
+ * ✅ Multiple log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+ * ✅ Context-aware logging with pretty JSON
+ * ✅ Includes timestamp, class, file, and line information
+ * ✅ Writes to both PHP error log and custom log file
+ * ✅ Only logs when WP_DEBUG is enabled
+ *
+ * Example usage:
+ * ```php
+ * use MDMasudSikdar\WpKits\Helpers\Logger;
+ *
+ * Logger::info('User logged in', ['user_id' => 123]);
+ * Logger::debug('Fetching user data', ['query_time' => 0.25]);
+ * Logger::warning('Payment gateway response delayed', ['order_id' => 456]);
+ * Logger::error('Failed to send email', ['email' => 'user@example.com']);
+ * Logger::critical('Database connection lost', ['host' => 'localhost', 'db' => 'mydb']);
+ * ```
  *
  * @package MDMasudSikdar\WpKits\Helpers
  */
@@ -24,7 +40,7 @@ class Logger
      * Logs an informational message.
      *
      * @param string $message The message to log.
-     * @param array $context Optional array of additional context information.
+     * @param array  $context Optional context information as key-value pairs.
      *
      * @return void
      *
@@ -42,13 +58,13 @@ class Logger
      * Logs a debug message.
      *
      * @param string $message The message to log.
-     * @param array $context Optional array of additional context information.
+     * @param array  $context Optional context information as key-value pairs.
      *
      * @return void
      *
      * @example
      * ```php
-     * Logger::debug('Fetching user data', ['user_id' => 123, 'query_time' => 0.23]);
+     * Logger::debug('Fetching user data', ['query_time' => 0.25]);
      * ```
      */
     public static function debug(string $message, array $context = []): void
@@ -60,7 +76,7 @@ class Logger
      * Logs a warning message.
      *
      * @param string $message The message to log.
-     * @param array $context Optional array of additional context information.
+     * @param array  $context Optional context information as key-value pairs.
      *
      * @return void
      *
@@ -78,7 +94,7 @@ class Logger
      * Logs an error message.
      *
      * @param string $message The message to log.
-     * @param array $context Optional array of additional context information.
+     * @param array  $context Optional context information as key-value pairs.
      *
      * @return void
      *
@@ -96,7 +112,7 @@ class Logger
      * Logs a critical message.
      *
      * @param string $message The message to log.
-     * @param array $context Optional array of additional context information.
+     * @param array  $context Optional context information as key-value pairs.
      *
      * @return void
      *
@@ -111,11 +127,11 @@ class Logger
     }
 
     /**
-     * Core logging method used internally by all public methods.
+     * Core logging method used internally by all public log methods.
      *
-     * @param string $level The log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-     * @param string $message The log message
-     * @param array $context Optional context array
+     * @param string $level   The log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+     * @param string $message The message to log.
+     * @param array  $context Optional additional context information.
      *
      * @return void
      *
@@ -128,37 +144,37 @@ class Logger
             return;
         }
 
-        // Ensure the provided log level is valid
+        // Ensure valid log level
         if (!in_array($level, self::$levels, true)) {
             $level = 'INFO';
         }
 
-        // Current timestamp
+        // Get current timestamp
         $timestamp = date('Y-m-d H:i:s');
 
-        // Current class name
+        // Get current class name
         $class = static::class;
 
-        // Prepare context data as pretty JSON if provided
+        // Prepare context as JSON string if provided
         $contextStr = '';
         if (!empty($context)) {
             $contextStr = ' | Context: ' . json_encode($context, JSON_PRETTY_PRINT);
         }
 
-        // Capture backtrace to determine where the log was triggered
+        // Capture backtrace to identify file and line where log was triggered
         $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
         $location = '';
         if (isset($trace[1])) {
             $location = sprintf(' [%s:%d]', $trace[1]['file'], $trace[1]['line']);
         }
 
-        // Build the final log message
+        // Construct the final log message
         $logMessage = sprintf("[%s] [%s] [%s]%s %s", $timestamp, $level, $class, $location, $message . $contextStr);
 
-        // Write to PHP error log (wp-content/debug.log if WP_DEBUG_LOG is true)
+        // Write to PHP error log (usually wp-content/debug.log if WP_DEBUG_LOG is true)
         error_log($logMessage);
 
-        // Write to a custom log file in wp-content
+        // Write to a custom log file inside wp-content
         $logFile = WP_CONTENT_DIR . '/advanced-debug.log';
         @file_put_contents($logFile, $logMessage . PHP_EOL, FILE_APPEND | LOCK_EX);
     }

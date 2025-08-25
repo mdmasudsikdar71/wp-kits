@@ -2,27 +2,46 @@
 
 namespace MDMasudSikdar\WpKits\Database;
 
-use wpdb;
+use MDMasudSikdar\WpKits\Traits\SingletonTrait;
 
 /**
  * Class MigrationManager
  *
- * Handles plugin database migrations.
- * Tracks applied migrations in a dedicated table and ensures each migration runs only once.
+ * Handles plugin database migrations with batch tracking.
+ *
+ * Features:
+ * ✅ Singleton pattern to ensure only one instance exists
+ * ✅ Tracks applied migrations in a dedicated table
+ * ✅ Executes migrations only once
+ * ✅ Supports rollback by batch
+ * ✅ Uses WordPress $wpdb
+ *
+ * Responsibilities:
+ * - Manage migrations table creation
+ * - Run new migrations
+ * - Log executed migrations
+ * - Rollback migrations
  *
  * @package MDMasudSikdar\WpKits\Database
  */
 class MigrationManager
 {
+    use SingletonTrait;
+
     /**
      * WordPress database object.
      *
      * @var wpdb
+     * @example
+     * ```php
+     * global $wpdb;
+     * echo $wpdb->prefix;
+     * ```
      */
     protected wpdb $wpdb;
 
     /**
-     * Name of the migrations tracking table (without prefix).
+     * Name of the migrations table without prefix.
      *
      * @var string
      */
@@ -36,128 +55,124 @@ class MigrationManager
     protected string $tableName;
 
     /**
-     * Constructor.
+     * Private constructor for singleton.
      *
-     * Initializes the migration manager and sets up the migrations tracking table.
-     *
-     * @param string|null $migrationTable Optional table name (without prefix).
+     * @param string|null $migrationTable Optional table name (without prefix)
      */
-    public function __construct(?string $migrationTable = null)
+    private function __construct(?string $migrationTable = null)
     {
         global $wpdb;
 
+        // Assign WP database object
         $this->wpdb = $wpdb;
 
+        // Set table name if provided
         if ($migrationTable) {
             $this->migrationTable = $migrationTable;
         }
 
-        // Full table name with WordPress prefix
+        // Compute full table name with prefix
         $this->tableName = $this->wpdb->prefix . $this->migrationTable;
 
-        // Create migrations table if it doesn't exist
+        // Ensure migrations table exists
         $this->createMigrationsTable();
     }
 
     /**
-     * Creates the migrations tracking table if it does not exist.
-     *
-     * Columns:
-     * - id: primary key
-     * - migration: class name of the migration
-     * - batch: batch number
-     * - created_at: timestamp when migration was run
+     * Create the migrations tracking table if it does not exist.
      *
      * @return void
      */
     protected function createMigrationsTable(): void
     {
+        // Skip if table exists
         if ($this->wpdb->get_var("SHOW TABLES LIKE '{$this->tableName}'")) {
             return;
         }
 
-        // Here we will use your Schema class to build the table
+        // Use Schema builder
         $schema = new Schema($this->migrationTable);
 
-        $schema->increments();       // id
-        $schema->string('migration'); // migration class name
-        $schema->integer('batch');    // batch number
+        $schema->increments();         // id
+        $schema->string('migration');  // migration class
+        $schema->integer('batch');     // batch number
         $schema->timestamp('created_at'); // timestamp
-        $schema->build();
+
+        $schema->build();              // create table
     }
 
     /**
      * Run an array of migration instances.
      *
-     * Each migration class should have an `up()` method that defines
-     * the database changes for that migration.
+     * Executes `up()` on migrations not yet executed.
      *
-     * Only migrations that have not yet been run will be executed.
-     *
-     * @param Migration[] $migrations Array of migration class instances
+     * @param Migration[] $migrations Array of Migration instances
      * @return void
      * @example
-     * MigrationManager::runMigrations([
-     *     new CreateBooksTable(),
-     *     new AddAuthorsTable(),
-     * ]);
+     * ```php
+     * MigrationManager::runMigrations([new CreateBooksTable()]);
+     * ```
      */
-    public function runMigrations(array $migrations): void
+    public static function runMigrations(array $migrations): void
     {
-        // Determine the next batch number
-        $batch = $this->getCurrentBatch() + 1;
+        // Get singleton instance
+        $instance = self::getInstance();
+
+        // Determine next batch number
+        $batch = $instance->getCurrentBatch() + 1;
 
         foreach ($migrations as $migration) {
-
-            // Ensure it is a Migration instance
-            if (! $migration instanceof Migration) {
-                continue; // Skip invalid objects
+            // Only Migration instances
+            if (!$migration instanceof Migration) {
+                continue;
             }
 
             $migrationName = get_class($migration);
 
-            // Skip migrations that have already run
-            if ($this->hasRun($migrationName)) {
+            // Skip already executed
+            if ($instance->hasRun($migrationName)) {
                 continue;
             }
 
-            // Execute the migration
+            // Execute migration
             $migration->up();
 
-            // Log the migration as applied
-            $this->logMigration($migrationName, $batch);
+            // Log migration
+            $instance->logMigration($migrationName, $batch);
         }
     }
 
     /**
-     * Rollback migrations.
+     * Rollback latest migrations by batch.
      *
-     * By default, rolls back the latest batch. You can specify a number
-     * of batches to rollback.
-     *
-     * @param int $steps Number of batches to rollback, default 1
+     * @param int $steps Number of batches to rollback
      * @return void
      * @example
-     * MigrationManager::rollback(); // Rolls back latest batch
-     * MigrationManager::rollback(2); // Rolls back last 2 batches
+     * ```php
+     * MigrationManager::rollback();
+     * MigrationManager::rollback(2);
+     * ```
      */
-    public function rollback(int $steps = 1): void
+    public static function rollback(int $steps = 1): void
     {
         if ($steps < 1) {
             return;
         }
 
-        // Get the highest batch numbers in descending order
-        $batches = $this->wpdb->get_col(
-            "SELECT DISTINCT batch FROM {$this->tableName} ORDER BY batch DESC LIMIT $steps"
+        // Get singleton instance
+        $instance = self::getInstance();
+
+        // Get latest batch numbers descending
+        $batches = $instance->wpdb->get_col(
+            "SELECT DISTINCT batch FROM {$instance->tableName} ORDER BY batch DESC LIMIT $steps"
         );
 
         foreach ($batches as $batch) {
 
-            // Get all migrations in this batch in reverse order
-            $migrations = $this->wpdb->get_col(
-                $this->wpdb->prepare(
-                    "SELECT migration FROM {$this->tableName} WHERE batch = %d ORDER BY id DESC",
+            // Get migrations in batch reverse order
+            $migrations = $instance->wpdb->get_col(
+                $instance->wpdb->prepare(
+                    "SELECT migration FROM {$instance->tableName} WHERE batch = %d ORDER BY id DESC",
                     $batch
                 )
             );
@@ -165,29 +180,26 @@ class MigrationManager
             foreach ($migrations as $migrationName) {
 
                 if (!class_exists($migrationName)) {
-                    continue; // Skip if class not found
+                    continue;
                 }
 
                 $migration = new $migrationName();
 
-                // Only rollback if `down()` exists
+                // Only rollback if down() exists
                 if (method_exists($migration, 'down')) {
                     $migration->down();
                 }
 
-                // Remove migration from log
-                $this->wpdb->delete(
-                    $this->tableName,
-                    ['migration' => $migrationName]
-                );
+                // Remove from migration log
+                $instance->wpdb->delete($instance->tableName, ['migration' => $migrationName]);
             }
         }
     }
 
     /**
-     * Check if a migration has already been run.
+     * Check if a migration has already run.
      *
-     * @param string $migrationName Fully qualified class name of migration
+     * @param string $migrationName Fully qualified class name
      * @return bool
      */
     protected function hasRun(string $migrationName): bool

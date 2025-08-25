@@ -2,30 +2,59 @@
 
 namespace MDMasudSikdar\WpKits\RestApi;
 
-use MDMasudSikdar\WpKits\Helpers\Language;
 use ReflectionMethod;
 
 /**
  * Class RestApi
  *
- * Provides a centralized utility for registering WordPress REST API routes
- * using clean, reusable, and modern syntax.
+ * Centralized utility for registering WordPress REST API routes
+ * with clean, reusable, and modern syntax.
  *
- * Supports both simple callbacks and controller method registration
- * using array syntax: [ClassName::class, 'method'].
+ * Features:
+ * ✅ Supports simple callbacks and controller methods
+ * ✅ Automatic namespace and endpoint parsing
+ * ✅ Standardized responses with success/status
+ * ✅ Nonce verification for security
+ *
+ * Example usage:
+ * ```php
+ * // Simple route with callback
+ * RestApi::register(
+ *     'wpkits/v1/hello',
+ *     'GET',
+ *     function($request) {
+ *         return RestApi::response(['message' => 'Hello World']);
+ *     }
+ * );
+ *
+ * // Controller-based route
+ * RestApi::controller(
+ *     'wpkits/v1/users',
+ *     'POST',
+ *     [UserController::class, 'createUser']
+ * );
+ * ```
  *
  * @package MDMasudSikdar\WpKits\RestApi
  */
 class RestApi
 {
     /**
-     * Register a simple REST route with a callback function.
+     * Register a simple REST route with a callback.
      *
-     * @param string        $route Full route string, e.g. 'wpkits/v1/hello'
+     * @param string        $route Full route string (e.g., 'wpkits/v1/hello')
      * @param string        $method HTTP method: GET, POST, PUT, DELETE
      * @param callable      $callback Function that handles the request
      * @param callable|null $permission_callback Optional permission callback
      * @param array         $args Optional schema for validation
+     * @return void
+     *
+     * @example
+     * ```php
+     * RestApi::register('wpkits/v1/status', 'GET', function($request){
+     *     return RestApi::response(['status'=>'ok']);
+     * });
+     * ```
      */
     public static function register(
         string $route,
@@ -34,15 +63,15 @@ class RestApi
         ?callable $permission_callback = null,
         array $args = []
     ): void {
-        // Use WordPress register_rest_route function
+        // Call WordPress register_rest_route with normalized namespace and endpoint
         register_rest_route(
-            self::normalize_namespace($route), // Extract the namespace part
-            self::normalize_endpoint($route),  // Extract the endpoint part
+            self::normalize_namespace($route), // Extract namespace, e.g., 'wpkits/v1'
+            self::normalize_endpoint($route),  // Extract endpoint, e.g., '/hello'
             [
-                'methods'             => strtoupper($method),           // Ensure uppercase HTTP method
-                'callback'            => $callback,                    // Route handler
+                'methods'             => strtoupper($method),                 // HTTP method
+                'callback'            => $callback,                           // Route handler
                 'permission_callback' => $permission_callback ?? '__return_true', // Default allow all
-                'args'                => $args,                        // Optional arguments schema
+                'args'                => $args,                               // Optional arguments
             ]
         );
     }
@@ -50,13 +79,19 @@ class RestApi
     /**
      * Register a controller class method as a REST endpoint.
      *
-     * Accepts array syntax [Class::class, 'method'] instead of string "Controller@method".
+     * Accepts array syntax [Class::class, 'method'].
      *
      * @param string        $route Full route string, e.g. 'wpkits/v1/hello'
-     * @param string        $method HTTP method: GET, POST, PUT, DELETE
+     * @param string        $method HTTP method
      * @param array         $controller Array with class and method: [Class::class, 'method']
      * @param callable|null $permission_callback Optional permission callback
-     * @param array         $args Optional arguments schema
+     * @param array         $args Optional validation schema
+     * @return void
+     *
+     * @example
+     * ```php
+     * RestApi::controller('wpkits/v1/users', 'POST', [UserController::class, 'createUser']);
+     * ```
      */
     public static function controller(
         string $route,
@@ -65,58 +100,54 @@ class RestApi
         ?callable $permission_callback = null,
         array $args = []
     ): void {
-        // Extract class and method from array
+        // Extract class and method from controller array
         [$class, $action] = $controller;
 
-        // Wrap the permission callback to include nonce verification automatically
+        // Wrap permission callback to include nonce verification
         $permission_callback = function (\WP_REST_Request $request) use ($permission_callback) {
-            // Only verify nonce for non-public GET requests
-            if ($request->get_method() != 'GET') {
+            // Only verify nonce for non-GET requests
+            if ($request->get_method() !== 'GET') {
                 if (!self::verifyNonce($request->get_header('X-WP-Nonce'), $request->get_header('X-Plugin-Nonce'))) {
-                    return self::response(Language::__('Invalid or missing nonce'), false, 403);
+                    return self::response(__('Invalid or missing nonce'), false, 403);
                 }
             }
 
-            // If an original permission callback exists, call it
+            // Call original permission callback if exists
             if ($permission_callback && is_callable($permission_callback)) {
                 return (bool) call_user_func($permission_callback, $request);
             }
 
-            return true;
+            return true; // Default allow
         };
 
-        // Delegate to the register method
+        // Delegate to register method
         self::register(
             $route,
             $method,
             function (\WP_REST_Request $request) use ($class, $action) {
-                // Instantiate the controller
+                // Instantiate controller
                 $instance = new $class();
 
                 // Validate method exists
                 if (!method_exists($instance, $action)) {
-                    return self::response(
-                        "Method {$action} not found in {$class}", // Error message
-                        false,
-                        404
-                    );
+                    return self::response("Method {$action} not found in {$class}", false, 404);
                 }
 
-                // Reflection for argument inspection
+                // Inspect method parameters using Reflection
                 $reflection = new ReflectionMethod($instance, $action);
                 $params = $reflection->getParameters();
 
                 try {
-                    // Invoke method with WP_REST_Request if required
+                    // Call method, passing WP_REST_Request if needed
                     $result = $reflection->invokeArgs(
                         $instance,
                         count($params) > 0 ? [$request] : []
                     );
 
-                    // Return standardized response
+                    // Return standardized success response
                     return self::response($result, true);
                 } catch (\Throwable $e) {
-                    // Return error response if exception occurs
+                    // Return standardized error response on exception
                     return self::response($e->getMessage(), false, 500);
                 }
             },
@@ -126,20 +157,24 @@ class RestApi
     }
 
     /**
-     * Standardized REST API response.
+     * Standardized REST API response wrapper.
      *
-     * Wraps raw data but preserves WP_REST_Response instances (headers & status intact).
+     * Converts raw data to WP_REST_Response while preserving headers and status.
      *
-     * @param mixed $payload Response data or WP_REST_Response
-     * @param bool  $success Whether the request was successful
-     * @param int   $status HTTP status code (default 200)
-     * @param array $headers Optional headers
-     *
+     * @param mixed $payload Data to return
+     * @param bool  $success Success flag
+     * @param int   $status HTTP status code
+     * @param array $headers Optional HTTP headers
      * @return \WP_REST_Response
+     *
+     * @example
+     * ```php
+     * return RestApi::response(['message'=>'Hello'], true, 200);
+     * ```
      */
     public static function response(mixed $payload, bool $success = true, int $status = 200, array $headers = []): \WP_REST_Response
     {
-        // Already a WP_REST_Response? Return as-is
+        // If already WP_REST_Response, return as-is
         if ($payload instanceof \WP_REST_Response) {
             return $payload;
         }
@@ -147,14 +182,15 @@ class RestApi
         // Prepare structured response
         $response_data = [
             'success' => $success,
-            'payload'    => $payload,
+            'payload' => $payload,
             'headers' => $headers,
-            'status'  => $status
+            'status'  => $status,
         ];
 
+        // Create WP_REST_Response instance
         $response = new \WP_REST_Response($response_data, $status);
 
-        // Add custom headers if any
+        // Set custom headers
         foreach ($headers as $key => $value) {
             $response->header($key, $value);
         }
@@ -163,42 +199,39 @@ class RestApi
     }
 
     /**
-     * Extract the namespace part from a full route.
+     * Extract namespace from full route string.
      *
-     * E.g. 'wpkits/v1/hello' => 'wpkits/v1'
+     * E.g., 'wpkits/v1/hello' => 'wpkits/v1'
      *
      * @param string $route Full route string
      * @return string Namespace
      */
     private static function normalize_namespace(string $route): string
     {
-        $parts = explode('/', trim($route, '/'));
-        return implode('/', array_slice($parts, 0, 2));
+        $parts = explode('/', trim($route, '/')); // Split route into segments
+        return implode('/', array_slice($parts, 0, 2)); // Take first 2 segments as namespace
     }
 
     /**
-     * Extract the endpoint part from a full route.
+     * Extract endpoint from full route string.
      *
-     * E.g. 'wpkits/v1/hello' => '/hello'
+     * E.g., 'wpkits/v1/hello' => '/hello'
      *
      * @param string $route Full route string
      * @return string Endpoint string
      */
     private static function normalize_endpoint(string $route): string
     {
-        $parts = explode('/', trim($route, '/'));
-        return '/' . implode('/', array_slice($parts, 2));
+        $parts = explode('/', trim($route, '/')); // Split route
+        return '/' . implode('/', array_slice($parts, 2)); // Join remaining parts as endpoint
     }
 
     /**
-     * Verify a WordPress nonce for a given key.
+     * Verify WordPress nonce for security.
      *
-     * Checks if the provided nonce is valid for the specified key/action.
-     * Returns true if the nonce is valid and has not expired, false otherwise.
-     *
-     * @param string $nonce The nonce string to verify.
-     * @param string $key. The action/key to verify against.
-     * @return bool True if nonce is valid, false otherwise.
+     * @param string $nonce Nonce string
+     * @param string $key Action/key to verify against
+     * @return bool True if valid, false otherwise
      */
     private static function verifyNonce(string $nonce, string $key): bool
     {
@@ -208,12 +241,8 @@ class RestApi
     /**
      * Generate a WordPress nonce for a given key.
      *
-     * Nonces are used to verify the intention of requests and prevent CSRF attacks.
-     * By default, the key 'wpbp_rest_nonce' is used, but you can pass a custom key
-     * for different plugins or contexts.
-     *
-     * @param string $key. The action/key for which to generate the nonce.
-     * @return string The generated WordPress nonce string.
+     * @param string $key Action/key for nonce
+     * @return string Nonce string
      */
     private static function generateNonce(string $key): string
     {

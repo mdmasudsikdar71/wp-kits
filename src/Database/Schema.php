@@ -8,14 +8,19 @@ use wpdb;
 /**
  * Class Schema
  *
- * Provides schema management for WordPress.
+ * Provides a clean and fluent API for managing database schemas in WordPress plugins.
  *
- * Example usage:
- * ```php
- * Schema::create('my_table', function($table) {
- *     $table->increments('id');
- * });
- * ```
+ * Features:
+ * ✅ Fluent table creation and modification syntax
+ * ✅ Column type helpers (increments, string, integer, boolean, timestamps, etc.)
+ * ✅ Supports foreign keys and indexes
+ * ✅ Automatic handling of table prefixes and charset
+ *
+ * Responsibilities:
+ * 1. `create()`  - Create a new table with columns and constraints
+ * 2. `drop()`    - Drop a table safely
+ *
+ * @package MDMasudSikdar\WpKits\Database
  */
 class Schema
 {

@@ -5,47 +5,17 @@ namespace MDMasudSikdar\WpKits\Contracts;
 /**
  * Interface ServiceProviderInterface
  *
- * Defines the contract for all service providers in the plugin.
+ * Defines the contract for a service provider in a WordPress plugin.
  *
- * A service provider is responsible for registering and booting
- * a specific section of the plugin (e.g., Admin, Frontend, Shared services).
+ * Features:
+ * ✅ Standardized plugin service registration pattern
+ * ✅ Clear separation of registration and post-registration logic
+ * ✅ Supports Admin, Frontend, and shared service areas
+ * ✅ Inspired by Laravel's service provider pattern for maintainable WordPress code
  *
- * - The `register()` method should bind hooks, filters, or services.
- * - The `boot()` method should handle post-registration logic,
- *   such as initializing services or deferred tasks.
- *
- * Inspired by Laravel's service provider pattern, adapted for WordPress.
- *
- * ## Example Implementation
- *
- * ```php
- * use MDMasudSikdar\WpKits\Contracts\ServiceProviderInterface;
- *
- * class AdminServiceProvider implements ServiceProviderInterface
- * {
- *     public function register(): void
- *     {
- *         // Bind WordPress hooks and filters
- *         add_action('init', function () {
- *             // Register custom post types or enqueue admin scripts
- *         });
- *
- *         add_filter('manage_posts_columns', function ($columns) {
- *             $columns['custom'] = __('Custom Column', 'textdomain');
- *             return $columns;
- *         });
- *     }
- *
- *     public function boot(): void
- *     {
- *         // Perform post-registration tasks
- *         // For example: load REST API controllers or initialize services
- *         add_action('admin_enqueue_scripts', function () {
- *             wp_enqueue_style('my-admin-css', plugin_dir_url(__FILE__) . 'css/admin.css');
- *         });
- *     }
- * }
- * ```
+ * Responsibilities:
+ * 1. `register()` - Bind hooks, filters, custom post types, taxonomies, or services.
+ * 2. `boot()` - Execute logic after all providers are registered, including deferred tasks.
  *
  * @package MDMasudSikdar\WpKits\Contracts
  */
@@ -54,11 +24,23 @@ interface ServiceProviderInterface
     /**
      * Register hooks, filters, or service bindings.
      *
-     * This method should only contain setup/registration logic.
-     * Avoid executing logic that depends on later WordPress lifecycle
-     * stages (e.g., `init`, `wp_loaded`) directly — instead, hook into them.
+     * This method should only handle setup/registration logic.
+     * Avoid running tasks that depend on other providers at this stage —
+     * instead, use WordPress hooks like `add_action()` or `add_filter()`.
      *
-     * Example: add_action(), add_filter(), register_post_type(), etc.
+     * Example usage:
+     * ```php
+     * add_action('init', function () {
+     *     // Register a custom post type
+     *     register_post_type('my_custom_type', ['public' => true]);
+     * });
+     *
+     * add_filter('manage_posts_columns', function ($columns) {
+     *     // Add a custom admin column
+     *     $columns['custom'] = __('Custom Column', 'textdomain');
+     *     return $columns;
+     * });
+     * ```
      *
      * @return void
      */
@@ -67,13 +49,18 @@ interface ServiceProviderInterface
     /**
      * Execute logic after all providers have been registered.
      *
-     * Useful for:
-     * - Deferred initialization
-     * - Bootstrapping services
-     * - Loading assets, routes, or controllers
+     * Use this method for:
+     * - Deferred initialization that depends on other providers
+     * - Enqueueing scripts, styles, or registering REST API routes
+     * - Bootstrapping services that rely on fully initialized providers
      *
-     * This method runs later than `register()` and is intended
-     * for logic that depends on all providers being set up.
+     * Example usage:
+     * ```php
+     * add_action('admin_enqueue_scripts', function () {
+     *     // Enqueue admin CSS after all providers are registered
+     *     wp_enqueue_style('my-admin-css', plugin_dir_url(__FILE__) . 'css/admin.css');
+     * });
+     * ```
      *
      * @return void
      */

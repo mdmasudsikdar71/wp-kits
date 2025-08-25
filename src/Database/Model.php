@@ -7,17 +7,25 @@ use wpdb;
 /**
  * Abstract Base Model for WordPress
  *
- * Provides a foundation for creating WordPress models
- * with access to the `$wpdb` database object.
+ * Provides a robust foundation for creating database-backed models
+ * in WordPress plugins. This class integrates with the global `$wpdb` object
+ * and provides convenient features for interacting with plugin tables.
  *
- * Child classes should define:
- * - `protected static $table` as the base table name (without prefix)
- * - `protected $fillable` for mass-assignable attributes
+ * Features:
+ * ✅ Access to `$wpdb` for safe queries
+ * ✅ Automatic table prefix handling
+ * ✅ Mass assignment protection via `$fillable` attributes
+ * ✅ Magic getters and setters for attributes
+ * ✅ Query builder support via `query()` method
+ * ✅ Static calls proxy to instance methods using `__callStatic`
+ * ✅ Easy CRUD operations: create, read, update, delete
  *
- * Supports:
- * - Static calls for instance methods (via __callStatic)
- * - Magic getters/setters for model attributes
- * - Query building via `query()` method
+ * Responsibilities:
+ * 1. Define the table name with `protected static $table`
+ * 2. Define fillable fields for mass assignment with `protected $fillable`
+ * 3. Provide reusable database query logic for child models
+ *
+ * @package MDMasudSikdar\WpKits\Models
  */
 abstract class Model
 {
