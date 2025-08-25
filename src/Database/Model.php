@@ -812,7 +812,7 @@ abstract class Model
      * @param ?string $column Column to order by, defaults to created_at
      * @return static
      */
-    public function latest(string $column = null): static
+    public function latest(?string $column = null): static
     {
         $column = $column ?? ($this->timestamps ? $this->createdAtColumn : static::$primaryKey);
         $this->orderBy[] = [$column, 'DESC'];
